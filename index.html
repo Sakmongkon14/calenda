@@ -295,7 +295,7 @@
   }
   .team-row{
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:space-between;
     gap:8px;
     padding:10px 0;
@@ -315,6 +315,8 @@
     flex:1;
     min-width:0;
   }
+  .team-meta .member-list{margin-top:8px;}
+  .team-meta .member-add-row{margin-top:6px;}
   .team-members{
     margin-top:3px;
     color:var(--text-secondary);
@@ -328,6 +330,7 @@
     display:flex;
     gap:5px;
     flex:none;
+    padding-top:2px;
   }
   .proj-btn{
     width:28px;height:28px;
@@ -871,6 +874,7 @@ function openDayModal(key, dateObj){
         <div class="team-meta">
           <div class="team-name">${escapeHtml(team)}</div>
           <div class="team-members" title="${escapeAttr(formatMembers(team))}">${escapeHtml(formatMembers(team))}</div>
+          ${renderMemberControls(team)}
         </div>
         <div class="proj-options">${btns}${clearBtn}</div>
       </div>`;
@@ -885,7 +889,43 @@ function escapeHtml(s){
 }
 function escapeAttr(s){ return escapeHtml(s); }
 
+function renderMemberControls(team){
+  return `
+    <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
+      ${(state.teamMembers[team] || []).map(member=>`
+        <div class="member-chip" title="${escapeAttr(member)}">
+          <span>${escapeHtml(member)}</span>
+          <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
+        </div>
+      `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
+    </div>
+    <div class="member-add-row">
+      <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
+      <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
+    </div>
+  `;
+}
+
+function getActiveDateObj(){
+  const [year, month, day] = activeDayKey.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 document.getElementById('teamAssignList').addEventListener('click', async (e)=>{
+  const addMemberBtn = e.target.closest('.member-add-btn');
+  if(addMemberBtn){
+    const team = addMemberBtn.dataset.team;
+    const input = addMemberBtn.parentElement.querySelector('.member-name-input');
+    await addMember(team, input, 'day');
+    return;
+  }
+
+  const removeMemberBtn = e.target.closest('.member-remove-btn');
+  if(removeMemberBtn){
+    await removeMember(removeMemberBtn.dataset.team, removeMemberBtn.dataset.member, 'day');
+    return;
+  }
+
   const btn = e.target.closest('.proj-btn');
   if(!btn) return;
   const team = btn.dataset.team;
@@ -898,9 +938,14 @@ document.getElementById('teamAssignList').addEventListener('click', async (e)=>{
     state.assignments[activeDayKey][team] = proj;
   }
   await saveAssignments();
-  const dateObj = new Date(YEAR, currentMonth, parseInt(document.getElementById('dayModalTitle').textContent.match(/\d+/)[0]));
-  openDayModal(activeDayKey, dateObj);
+  openDayModal(activeDayKey, getActiveDateObj());
   render();
+});
+
+document.getElementById('teamAssignList').addEventListener('keydown', async (e)=>{
+  if(e.key !== 'Enter' || !e.target.classList.contains('member-name-input')) return;
+  e.preventDefault();
+  await addMember(e.target.dataset.team, e.target, 'day');
 });
 
 document.getElementById('closeDayModal').addEventListener('click', ()=>{
@@ -921,18 +966,7 @@ function renderTeamEditList(){
     <div class="team-edit-row">
       <div class="team-edit-fields">
         <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="ชื่อทีม">
-        <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
-          ${(state.teamMembers[team] || []).map(member=>`
-            <div class="member-chip" title="${escapeAttr(member)}">
-              <span>${escapeHtml(member)}</span>
-              <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
-            </div>
-          `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
-        </div>
-        <div class="member-add-row">
-          <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
-          <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
-        </div>
+        ${renderMemberControls(team)}
         <div class="field-hint">เพิ่มได้เรื่อย ๆ และลบรายชื่อได้ทีละคน</div>
       </div>
       <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
@@ -995,13 +1029,7 @@ document.getElementById('teamEditList').addEventListener('click', async (e)=>{
 
   const removeMemberBtn = e.target.closest('.member-remove-btn');
   if(removeMemberBtn){
-    const team = removeMemberBtn.dataset.team;
-    const member = removeMemberBtn.dataset.member;
-    state.teamMembers[team] = (state.teamMembers[team] || []).filter(name => name !== member);
-    await saveTeams();
-    renderTeamEditList();
-    render();
-    showToast(`ลบ ${member} แล้ว`);
+    await removeMember(removeMemberBtn.dataset.team, removeMemberBtn.dataset.member, 'team');
     return;
   }
 
@@ -1038,9 +1066,27 @@ async function addMember(team, input){
   state.teamMembers[team].push(member);
   input.value = '';
   await saveTeams();
-  renderTeamEditList();
-  render();
+  refreshMemberViews();
   showToast(`เพิ่ม ${member} แล้ว`);
+}
+
+async function removeMember(team, member){
+  state.teamMembers[team] = (state.teamMembers[team] || []).filter(name => name !== member);
+  await saveTeams();
+  refreshMemberViews();
+  showToast(`ลบ ${member} แล้ว`);
+}
+
+function refreshMemberViews(){
+  const teamOverlay = document.getElementById('teamOverlay');
+  if(teamOverlay.classList.contains('open')) renderTeamEditList();
+
+  const dayOverlay = document.getElementById('dayOverlay');
+  if(dayOverlay.classList.contains('open') && activeDayKey){
+    openDayModal(activeDayKey, getActiveDateObj());
+  }
+
+  render();
 }
 
 document.getElementById('addTeamBtn').addEventListener('click', addTeam);
