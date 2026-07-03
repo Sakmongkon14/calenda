@@ -315,8 +315,7 @@
     flex:1;
     min-width:0;
   }
-  .team-meta .member-list{margin-top:8px;}
-  .team-meta .member-add-row{margin-top:6px;}
+  .team-meta .member-editor{margin-top:10px;}
   .team-members{
     margin-top:3px;
     color:var(--text-secondary);
@@ -388,6 +387,19 @@
     gap:6px;
     min-height:28px;
   }
+  .member-editor{
+    display:grid;
+    gap:8px;
+    border:1px solid rgba(143,163,191,.22);
+    background:rgba(30,49,79,.58);
+    border-radius:10px;
+    padding:10px;
+  }
+  .member-editor-title{
+    color:var(--text-secondary);
+    font-size:11px;
+    font-weight:700;
+  }
   .member-chip{
     display:inline-flex;
     align-items:center;
@@ -423,10 +435,41 @@
   }
   .member-remove-btn:hover{background:var(--danger);color:#fff;}
   .member-add-row{
-    display:flex;
-    gap:6px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+    align-items:center;
   }
-  .member-add-row input{min-width:0;}
+  .member-add-row input{
+    min-width:0;
+    height:40px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface-light);
+    color:var(--text-primary);
+    padding:0 12px;
+    font-family:var(--font-body);
+    font-size:13px;
+  }
+  .member-add-row input::placeholder{color:var(--text-faint);}
+  .member-add-row input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px rgba(242,166,90,.16);
+  }
+  .member-add-btn{
+    min-width:96px;
+    height:40px;
+    justify-content:center;
+    white-space:nowrap;
+    border-color:#315176;
+    background:#1f3656;
+    font-weight:700;
+  }
+  .member-add-btn:hover{
+    background:#29476f;
+    border-color:#4C9AFF;
+  }
   .field-hint{
     color:var(--text-faint);
     font-size:11px;
@@ -891,17 +934,20 @@ function escapeAttr(s){ return escapeHtml(s); }
 
 function renderMemberControls(team){
   return `
-    <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
-      ${(state.teamMembers[team] || []).map(member=>`
-        <div class="member-chip" title="${escapeAttr(member)}">
-          <span>${escapeHtml(member)}</span>
-          <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
-        </div>
-      `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
-    </div>
-    <div class="member-add-row">
-      <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
-      <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
+    <div class="member-editor">
+      <div class="member-editor-title">สมาชิกในทีม</div>
+      <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
+        ${(state.teamMembers[team] || []).map(member=>`
+          <div class="member-chip" title="${escapeAttr(member)}">
+            <span>${escapeHtml(member)}</span>
+            <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
+          </div>
+        `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
+      </div>
+      <div class="member-add-row">
+        <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
+        <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
+      </div>
     </div>
   `;
 }
