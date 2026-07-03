@@ -112,6 +112,35 @@
     font-size:12.5px;
     color:var(--text-secondary);
   }
+  .toolbar-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .sync-status{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-secondary);
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+  }
+  .sync-status::before{
+    content:"";
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--text-faint);
+    flex:none;
+  }
+  .sync-status.online::before{background:var(--maintenance);}
+  .sync-status.connecting::before{background:var(--accent);}
+  .sync-status.offline::before{background:var(--danger);}
   .swatch{
     width:10px;height:10px;
     border-radius:2px;
@@ -395,7 +424,10 @@
 
   <div class="toolbar">
     <div class="legend" id="legend"></div>
-    <button class="btn" id="manageTeamsBtn">⚙ จัดการทีม</button>
+    <div class="toolbar-actions">
+      <span class="sync-status" id="syncStatus">Local only</span>
+      <button class="btn" id="manageTeamsBtn">⚙ จัดการทีม</button>
+    </div>
   </div>
 
   <div class="weekday-row" id="weekdayRow"></div>
@@ -440,13 +472,32 @@ const PROJECTS = [
   {key:'retrofit', label:'Retrofit', cls:'retrofit'},
   {key:'maintenance', label:'Maintenance', cls:'maintenance'}
 ];
+const DEFAULT_TEAMS = ["ทีม A","ทีม B","ทีม C"];
+
+// ใส่ค่า Firebase config ตรงนี้เพื่อเปิด realtime sync ข้ามเครื่อง
+// ไปที่ Firebase Console > Project settings > Your apps > Web app
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const REALTIME_DATA_PATH = "calenda/team-schedule-2026";
 
 let state = {
-  teams: ["ทีม A","ทีม B","ทีม C"],
+  teams: [...DEFAULT_TEAMS],
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
 let currentMonth = 6; // 0-indexed, default July since today's date is 2026-07-03
 let activeDayKey = null;
+let sync = {
+  mode: "local",
+  dataRef: null,
+  setRemote: null
+};
 
 const todayKey = fmtKey(new Date(2026,6,3));
 
@@ -465,7 +516,19 @@ function showToast(msg){
   showToast._tm = setTimeout(()=>t.classList.remove('show'), 1600);
 }
 
-function loadData(){
+async function loadData(){
+  loadLocalData();
+  render();
+
+  if(!hasFirebaseConfig()){
+    setSyncStatus("local", "Local only");
+    return;
+  }
+
+  await initRealtimeSync();
+}
+
+function loadLocalData(){
   try{
     const savedTeams = localStorage.getItem('calenda-teams');
     if(savedTeams) state.teams = JSON.parse(savedTeams);
@@ -474,16 +537,110 @@ function loadData(){
     const savedAssignments = localStorage.getItem('calenda-assignments');
     if(savedAssignments) state.assignments = JSON.parse(savedAssignments);
   }catch(e){}
-  render();
 }
 
-function saveTeams(){
+function saveLocalSnapshot(){
   try{ localStorage.setItem('calenda-teams', JSON.stringify(state.teams)); }
-  catch(e){ showToast('บันทึกทีมไม่สำเร็จ'); }
-}
-function saveAssignments(){
+  catch(e){}
   try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
-  catch(e){ showToast('บันทึกข้อมูลไม่สำเร็จ'); }
+  catch(e){}
+}
+
+async function saveTeams(){
+  saveLocalSnapshot();
+  await pushRemoteState('บันทึกทีมไม่สำเร็จ');
+}
+async function saveAssignments(){
+  saveLocalSnapshot();
+  await pushRemoteState('บันทึกข้อมูลไม่สำเร็จ');
+}
+
+function hasFirebaseConfig(){
+  return Boolean(
+    FIREBASE_CONFIG.apiKey &&
+    FIREBASE_CONFIG.databaseURL &&
+    FIREBASE_CONFIG.projectId &&
+    FIREBASE_CONFIG.appId
+  );
+}
+
+function setSyncStatus(mode, text){
+  const el = document.getElementById('syncStatus');
+  el.textContent = text;
+  el.className = `sync-status ${mode}`;
+}
+
+async function initRealtimeSync(){
+  setSyncStatus("connecting", "Connecting");
+
+  try{
+    const appModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+    const dbModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js");
+    const app = appModule.initializeApp(FIREBASE_CONFIG);
+    const database = dbModule.getDatabase(app);
+
+    sync.mode = "realtime";
+    sync.dataRef = dbModule.ref(database, REALTIME_DATA_PATH);
+    sync.setRemote = dbModule.set;
+
+    dbModule.onValue(sync.dataRef, async (snapshot)=>{
+      const remoteData = snapshot.val();
+
+      if(remoteData){
+        state.teams = Array.isArray(remoteData.teams) ? remoteData.teams : [...DEFAULT_TEAMS];
+        state.assignments = remoteData.assignments && typeof remoteData.assignments === "object"
+          ? remoteData.assignments
+          : {};
+        saveLocalSnapshot();
+        render();
+        refreshOpenModals();
+        setSyncStatus("online", "Realtime");
+        return;
+      }
+
+      await pushRemoteState('เริ่ม realtime ไม่สำเร็จ');
+    }, (error)=>{
+      console.error(error);
+      sync.mode = "local";
+      setSyncStatus("offline", "Local fallback");
+      showToast('เชื่อม realtime ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
+    });
+  }catch(error){
+    console.error(error);
+    sync.mode = "local";
+    setSyncStatus("offline", "Local fallback");
+    showToast('โหลด Firebase ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
+  }
+}
+
+async function pushRemoteState(errorMessage){
+  if(sync.mode !== "realtime" || !sync.dataRef || !sync.setRemote) return;
+
+  try{
+    await sync.setRemote(sync.dataRef, {
+      teams: state.teams,
+      assignments: state.assignments,
+      updatedAt: new Date().toISOString()
+    });
+    setSyncStatus("online", "Realtime");
+  }catch(error){
+    console.error(error);
+    setSyncStatus("offline", "Sync error");
+    showToast(errorMessage);
+  }
+}
+
+function refreshOpenModals(){
+  const dayOverlay = document.getElementById('dayOverlay');
+  if(dayOverlay.classList.contains('open') && activeDayKey){
+    const parts = activeDayKey.split('-').map(Number);
+    openDayModal(activeDayKey, new Date(parts[0], parts[1] - 1, parts[2]));
+  }
+
+  const teamOverlay = document.getElementById('teamOverlay');
+  if(teamOverlay.classList.contains('open')){
+    renderTeamEditList();
+  }
 }
 
 function renderLegend(){
