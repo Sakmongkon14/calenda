@@ -368,8 +368,7 @@
     gap:7px;
     min-width:0;
   }
-  .team-edit-row input,
-  .team-edit-row textarea{
+  .team-edit-row input{
     flex:1;
     background:var(--surface-light);
     border:1px solid var(--border);
@@ -379,13 +378,52 @@
     font-family:var(--font-body);
     font-size:13px;
   }
-  .team-edit-row textarea{
-    min-height:56px;
-    resize:vertical;
-    line-height:1.35;
+  .team-edit-row input:focus{outline:none;border-color:var(--accent);}
+  .member-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    min-height:28px;
   }
-  .team-edit-row input:focus,
-  .team-edit-row textarea:focus{outline:none;border-color:var(--accent);}
+  .member-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    max-width:100%;
+    border:1px solid var(--border);
+    background:var(--surface-hover);
+    color:var(--text-primary);
+    border-radius:999px;
+    padding:5px 7px 5px 9px;
+    font-size:12px;
+    line-height:1;
+  }
+  .member-chip span{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .member-remove-btn{
+    width:18px;
+    height:18px;
+    border:0;
+    border-radius:50%;
+    background:rgba(0,0,0,.22);
+    color:var(--text-primary);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    line-height:1;
+  }
+  .member-remove-btn:hover{background:var(--danger);color:#fff;}
+  .member-add-row{
+    display:flex;
+    gap:6px;
+  }
+  .member-add-row input{min-width:0;}
   .field-hint{
     color:var(--text-faint);
     font-size:11px;
@@ -883,8 +921,19 @@ function renderTeamEditList(){
     <div class="team-edit-row">
       <div class="team-edit-fields">
         <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="ชื่อทีม">
-        <textarea data-team="${escapeAttr(team)}" class="team-members-input" aria-label="สมาชิกของ ${escapeAttr(team)}" placeholder="รายชื่อสมาชิก เช่น สมชาย, วิชัย">${escapeHtml((state.teamMembers[team] || []).join('\n'))}</textarea>
-        <div class="field-hint">ใส่ชื่อสมาชิกคั่นด้วยบรรทัดหรือ comma</div>
+        <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
+          ${(state.teamMembers[team] || []).map(member=>`
+            <div class="member-chip" title="${escapeAttr(member)}">
+              <span>${escapeHtml(member)}</span>
+              <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
+            </div>
+          `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
+        </div>
+        <div class="member-add-row">
+          <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
+          <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
+        </div>
+        <div class="field-hint">เพิ่มได้เรื่อย ๆ และลบรายชื่อได้ทีละคน</div>
       </div>
       <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
     </div>
@@ -933,16 +982,29 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
     renderTeamEditList();
     showToast('อัปเดตชื่อทีมแล้ว');
   }
-  if(e.target.classList.contains('team-members-input')){
-    const team = e.target.dataset.team;
-    state.teamMembers[team] = parseMembersText(e.target.value);
-    await saveTeams();
-    render();
-    showToast('อัปเดตสมาชิกทีมแล้ว');
-  }
 });
 
 document.getElementById('teamEditList').addEventListener('click', async (e)=>{
+  const addMemberBtn = e.target.closest('.member-add-btn');
+  if(addMemberBtn){
+    const team = addMemberBtn.dataset.team;
+    const input = addMemberBtn.parentElement.querySelector('.member-name-input');
+    await addMember(team, input);
+    return;
+  }
+
+  const removeMemberBtn = e.target.closest('.member-remove-btn');
+  if(removeMemberBtn){
+    const team = removeMemberBtn.dataset.team;
+    const member = removeMemberBtn.dataset.member;
+    state.teamMembers[team] = (state.teamMembers[team] || []).filter(name => name !== member);
+    await saveTeams();
+    renderTeamEditList();
+    render();
+    showToast(`ลบ ${member} แล้ว`);
+    return;
+  }
+
   const btn = e.target.closest('.icon-btn');
   if(!btn) return;
   const idx = parseInt(btn.dataset.idx);
@@ -958,6 +1020,28 @@ document.getElementById('teamEditList').addEventListener('click', async (e)=>{
   renderTeamEditList();
   showToast(`ลบ ${removed} แล้ว`);
 });
+
+document.getElementById('teamEditList').addEventListener('keydown', async (e)=>{
+  if(e.key !== 'Enter' || !e.target.classList.contains('member-name-input')) return;
+  e.preventDefault();
+  await addMember(e.target.dataset.team, e.target);
+});
+
+async function addMember(team, input){
+  const member = input.value.trim();
+  if(!member) return;
+  if(!state.teamMembers[team]) state.teamMembers[team] = [];
+  if(state.teamMembers[team].includes(member)){
+    showToast('มีชื่อสมาชิกนี้อยู่แล้ว');
+    return;
+  }
+  state.teamMembers[team].push(member);
+  input.value = '';
+  await saveTeams();
+  renderTeamEditList();
+  render();
+  showToast(`เพิ่ม ${member} แล้ว`);
+}
 
 document.getElementById('addTeamBtn').addEventListener('click', addTeam);
 document.getElementById('newTeamInput').addEventListener('keydown', (e)=>{
