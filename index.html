@@ -311,6 +311,19 @@
     text-overflow:ellipsis;
     white-space:nowrap;
   }
+  .team-meta{
+    flex:1;
+    min-width:0;
+  }
+  .team-members{
+    margin-top:3px;
+    color:var(--text-secondary);
+    font-size:11.5px;
+    line-height:1.35;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
   .proj-options{
     display:flex;
     gap:5px;
@@ -342,12 +355,21 @@
 
   /* Team manager modal */
   .team-edit-row{
-    display:flex;
+    display:grid;
+    grid-template-columns:1fr auto;
     gap:8px;
-    align-items:center;
+    align-items:start;
     margin-bottom:8px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--border);
   }
-  .team-edit-row input{
+  .team-edit-fields{
+    display:grid;
+    gap:7px;
+    min-width:0;
+  }
+  .team-edit-row input,
+  .team-edit-row textarea{
     flex:1;
     background:var(--surface-light);
     border:1px solid var(--border);
@@ -357,7 +379,18 @@
     font-family:var(--font-body);
     font-size:13px;
   }
-  .team-edit-row input:focus{outline:none;border-color:var(--accent);}
+  .team-edit-row textarea{
+    min-height:56px;
+    resize:vertical;
+    line-height:1.35;
+  }
+  .team-edit-row input:focus,
+  .team-edit-row textarea:focus{outline:none;border-color:var(--accent);}
+  .field-hint{
+    color:var(--text-faint);
+    font-size:11px;
+    line-height:1.3;
+  }
   .icon-btn{
     background:none;
     border:1px solid var(--border);
@@ -491,6 +524,7 @@ const REALTIME_DATA_PATH = "calenda/team-schedule-2026";
 
 let state = {
   teams: [...DEFAULT_TEAMS],
+  teamMembers: {},
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
 let currentMonth = 6; // 0-indexed, default July since today's date is 2026-07-03
@@ -536,13 +570,20 @@ function loadLocalData(){
     if(savedTeams) state.teams = JSON.parse(savedTeams);
   }catch(e){}
   try{
+    const savedTeamMembers = localStorage.getItem('calenda-team-members');
+    if(savedTeamMembers) state.teamMembers = normalizeTeamMembers(JSON.parse(savedTeamMembers));
+  }catch(e){}
+  try{
     const savedAssignments = localStorage.getItem('calenda-assignments');
     if(savedAssignments) state.assignments = JSON.parse(savedAssignments);
   }catch(e){}
+  normalizeState();
 }
 
 function saveLocalSnapshot(){
   try{ localStorage.setItem('calenda-teams', JSON.stringify(state.teams)); }
+  catch(e){}
+  try{ localStorage.setItem('calenda-team-members', JSON.stringify(state.teamMembers)); }
   catch(e){}
   try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
   catch(e){}
@@ -594,9 +635,11 @@ async function initRealtimeSync(){
 
       if(remoteData){
         state.teams = Array.isArray(remoteData.teams) ? remoteData.teams : [...DEFAULT_TEAMS];
+        state.teamMembers = normalizeTeamMembers(remoteData.teamMembers || {});
         state.assignments = remoteData.assignments && typeof remoteData.assignments === "object"
           ? remoteData.assignments
           : {};
+        normalizeState();
         saveLocalSnapshot();
         render();
         refreshOpenModals();
@@ -630,6 +673,7 @@ async function pushRemoteState(errorMessage){
   try{
     await sync.setRemote(sync.dataRef, {
       teams: state.teams,
+      teamMembers: state.teamMembers,
       assignments: state.assignments,
       updatedAt: new Date().toISOString()
     });
@@ -653,6 +697,39 @@ function refreshOpenModals(){
   if(teamOverlay.classList.contains('open')){
     renderTeamEditList();
   }
+}
+
+function normalizeState(){
+  state.teams = Array.isArray(state.teams) ? state.teams : [...DEFAULT_TEAMS];
+  state.teamMembers = normalizeTeamMembers(state.teamMembers || {});
+  state.teams.forEach(team=>{
+    if(!Array.isArray(state.teamMembers[team])) state.teamMembers[team] = [];
+  });
+  Object.keys(state.teamMembers).forEach(team=>{
+    if(!state.teams.includes(team)) delete state.teamMembers[team];
+  });
+}
+
+function normalizeTeamMembers(value){
+  if(!value || typeof value !== "object") return {};
+  return Object.fromEntries(Object.entries(value).map(([team, members])=>[
+    team,
+    Array.isArray(members)
+      ? members.map(member => String(member).trim()).filter(Boolean)
+      : parseMembersText(members)
+  ]));
+}
+
+function parseMembersText(value){
+  return String(value || "")
+    .split(/[\n,]+/)
+    .map(member => member.trim())
+    .filter(Boolean);
+}
+
+function formatMembers(team){
+  const members = state.teamMembers[team] || [];
+  return members.length ? members.join(", ") : "ยังไม่ได้ระบุสมาชิก";
 }
 
 function renderLegend(){
@@ -753,7 +830,10 @@ function openDayModal(key, dateObj){
       ).join('');
       const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="ไม่ระบุ">–</button>`;
       return `<div class="team-row">
-        <div class="team-name">${escapeHtml(team)}</div>
+        <div class="team-meta">
+          <div class="team-name">${escapeHtml(team)}</div>
+          <div class="team-members" title="${escapeAttr(formatMembers(team))}">${escapeHtml(formatMembers(team))}</div>
+        </div>
         <div class="proj-options">${btns}${clearBtn}</div>
       </div>`;
     }).join('');
@@ -801,7 +881,11 @@ function renderTeamEditList(){
   }
   el.innerHTML = state.teams.map((team, idx)=>`
     <div class="team-edit-row">
-      <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input">
+      <div class="team-edit-fields">
+        <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="ชื่อทีม">
+        <textarea data-team="${escapeAttr(team)}" class="team-members-input" aria-label="สมาชิกของ ${escapeAttr(team)}" placeholder="รายชื่อสมาชิก เช่น สมชาย, วิชัย">${escapeHtml((state.teamMembers[team] || []).join('\n'))}</textarea>
+        <div class="field-hint">ใส่ชื่อสมาชิกคั่นด้วยบรรทัดหรือ comma</div>
+      </div>
       <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
     </div>
   `).join('');
@@ -829,7 +913,14 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
     if(!newName) return;
     const oldName = state.teams[idx];
     if(oldName === newName) return;
+    if(state.teams.some((team, teamIdx)=>teamIdx !== idx && team === newName)){
+      e.target.value = oldName;
+      showToast('มีชื่อทีมนี้อยู่แล้ว');
+      return;
+    }
     state.teams[idx] = newName;
+    state.teamMembers[newName] = state.teamMembers[oldName] || [];
+    delete state.teamMembers[oldName];
     Object.keys(state.assignments).forEach(dateKey=>{
       const dayObj = state.assignments[dateKey];
       if(dayObj[oldName] !== undefined){
@@ -839,7 +930,15 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
     });
     await saveTeams();
     await saveAssignments();
+    renderTeamEditList();
     showToast('อัปเดตชื่อทีมแล้ว');
+  }
+  if(e.target.classList.contains('team-members-input')){
+    const team = e.target.dataset.team;
+    state.teamMembers[team] = parseMembersText(e.target.value);
+    await saveTeams();
+    render();
+    showToast('อัปเดตสมาชิกทีมแล้ว');
   }
 });
 
@@ -849,6 +948,7 @@ document.getElementById('teamEditList').addEventListener('click', async (e)=>{
   const idx = parseInt(btn.dataset.idx);
   const removed = state.teams[idx];
   state.teams.splice(idx,1);
+  delete state.teamMembers[removed];
   Object.keys(state.assignments).forEach(dateKey=>{
     delete state.assignments[dateKey][removed];
     if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
@@ -869,6 +969,7 @@ async function addTeam(){
   if(!name) return;
   if(state.teams.includes(name)){ showToast('มีชื่อทีมนี้อยู่แล้ว'); return; }
   state.teams.push(name);
+  state.teamMembers[name] = [];
   input.value = '';
   await saveTeams();
   renderTeamEditList();
