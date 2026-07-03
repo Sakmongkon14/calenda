@@ -1,0 +1,720 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ปฏิทินทีมผู้รับเหมา 2026</title>
+<style>
+  :root{
+    --bg-base:#0F1B2D;
+    --surface:#16243B;
+    --surface-light:#1E314F;
+    --surface-hover:#25405F;
+    --border:#2A3E5C;
+    --text-primary:#EAF0F7;
+    --text-secondary:#8FA3BF;
+    --text-faint:#4C6079;
+    --accent:#F2A65A;
+    --newsite:#4C9AFF;
+    --retrofit:#F2A65A;
+    --maintenance:#52C77E;
+    --danger:#E0654F;
+    --radius:10px;
+    --font-body:'Sarabun','Noto Sans Thai',Tahoma,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:1100px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+  }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .header-title{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .header-title .eyebrow{
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+  }
+  .header-title h1{
+    margin:0;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  .month-nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:6px 8px;
+  }
+  .month-nav button{
+    width:32px;height:32px;
+    border-radius:50%;
+    border:none;
+    background:transparent;
+    color:var(--text-primary);
+    font-size:16px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .month-nav button:hover:not(:disabled){background:var(--surface-hover);}
+  .month-nav button:disabled{opacity:.25;cursor:default;}
+  .month-nav .label{
+    font-weight:700;
+    min-width:140px;
+    text-align:center;
+    font-size:15px;
+  }
+
+  /* Legend + team manager row */
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .legend{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    color:var(--text-secondary);
+  }
+  .swatch{
+    width:10px;height:10px;
+    border-radius:2px;
+    flex:none;
+  }
+  .btn{
+    font-family:var(--font-body);
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-primary);
+    padding:8px 14px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:var(--surface-hover);border-color:var(--text-faint);}
+  .btn-accent{
+    background:var(--accent);
+    color:#20140A;
+    border-color:var(--accent);
+    font-weight:700;
+  }
+  .btn-accent:hover{filter:brightness(1.08);}
+
+  /* Calendar grid */
+  .weekday-row{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .weekday-row div{
+    text-align:center;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    font-weight:700;
+    padding-bottom:4px;
+  }
+  .weekday-row div.weekend{color:var(--danger);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+  }
+  .day-cell{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    min-height:92px;
+    padding:8px;
+    cursor:pointer;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    transition:background .15s,border-color .15s,transform .1s;
+  }
+  .day-cell:hover{background:var(--surface-hover);border-color:var(--text-faint);}
+  .day-cell.empty-day{
+    background:transparent;
+    border:1px dashed var(--border);
+    cursor:default;
+    opacity:.35;
+  }
+  .day-cell.today{
+    border-color:var(--accent);
+    box-shadow:0 0 0 1px var(--accent) inset;
+  }
+  .day-num{
+    font-size:13px;
+    font-weight:700;
+    color:var(--text-primary);
+  }
+  .day-cell.weekend .day-num{color:var(--danger);}
+  .tags{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    overflow:hidden;
+  }
+  .tag{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:10.5px;
+    color:#0B1220;
+    background:var(--newsite);
+    border-radius:4px;
+    padding:2px 6px 2px 5px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .tag .cable{
+    width:4px;
+    align-self:stretch;
+    border-radius:2px;
+    background:rgba(0,0,0,.25);
+    flex:none;
+  }
+  .tag-newsite{background:color-mix(in srgb, var(--newsite) 85%, white 0%);}
+  .tag-retrofit{background:var(--retrofit);}
+  .tag-maintenance{background:var(--maintenance);}
+  .more-hint{
+    font-size:10px;
+    color:var(--text-faint);
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(6,11,20,.6);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:16px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    width:100%;
+    max-width:420px;
+    max-height:85vh;
+    overflow-y:auto;
+    padding:20px;
+  }
+  .modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  .modal-header h2{
+    margin:0;
+    font-size:17px;
+  }
+  .modal-header .close{
+    background:none;border:none;color:var(--text-secondary);
+    font-size:20px;cursor:pointer;line-height:1;padding:4px;
+  }
+  .team-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .team-row:last-child{border-bottom:none;}
+  .team-name{
+    font-size:13.5px;
+    font-weight:600;
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .proj-options{
+    display:flex;
+    gap:5px;
+    flex:none;
+  }
+  .proj-btn{
+    width:28px;height:28px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    opacity:.45;
+    transition:opacity .15s,transform .1s,border-color .15s;
+  }
+  .proj-btn:hover{opacity:.8;transform:scale(1.06);}
+  .proj-btn.active{opacity:1;border-color:#fff;}
+  .proj-btn.p-newsite{background:var(--newsite);}
+  .proj-btn.p-retrofit{background:var(--retrofit);}
+  .proj-btn.p-maintenance{background:var(--maintenance);}
+  .proj-btn.p-clear{background:var(--surface-light);color:var(--text-secondary);font-size:12px;opacity:.7;}
+  .proj-btn.p-clear:hover{opacity:1;}
+
+  .empty-teams{
+    text-align:center;
+    color:var(--text-secondary);
+    font-size:13px;
+    padding:20px 0;
+  }
+
+  /* Team manager modal */
+  .team-edit-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .team-edit-row input{
+    flex:1;
+    background:var(--surface-light);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text-primary);
+    padding:8px 10px;
+    font-family:var(--font-body);
+    font-size:13px;
+  }
+  .team-edit-row input:focus{outline:none;border-color:var(--accent);}
+  .icon-btn{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-secondary);
+    width:32px;height:32px;
+    border-radius:6px;
+    cursor:pointer;
+    flex:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .add-team-row{
+    display:flex;gap:8px;margin-top:10px;
+  }
+  .add-team-row input{
+    flex:1;
+    background:var(--surface-light);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text-primary);
+    padding:8px 10px;
+    font-family:var(--font-body);
+    font-size:13px;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:20px;left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--surface-light);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:13px;
+    opacity:0;
+    transition:opacity .25s, transform .25s;
+    pointer-events:none;
+    z-index:100;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:560px){
+    .day-cell{min-height:70px;padding:6px;}
+    .tag{font-size:9.5px;}
+    .month-nav .label{min-width:100px;font-size:13px;}
+    .header-title h1{font-size:18px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-title">
+      <span class="eyebrow">Contractor site schedule</span>
+      <h1>ปฏิทินทีมผู้รับเหมา 2026</h1>
+    </div>
+    <div class="month-nav">
+      <button id="prevBtn" aria-label="เดือนก่อนหน้า">‹</button>
+      <div class="label" id="monthLabel"></div>
+      <button id="nextBtn" aria-label="เดือนถัดไป">›</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="legend" id="legend"></div>
+    <button class="btn" id="manageTeamsBtn">⚙ จัดการทีม</button>
+  </div>
+
+  <div class="weekday-row" id="weekdayRow"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- Day assignment modal -->
+<div class="overlay" id="dayOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dayModalTitle">วันที่</h2>
+      <button class="close" id="closeDayModal">✕</button>
+    </div>
+    <div id="teamAssignList"></div>
+  </div>
+</div>
+
+<!-- Team management modal -->
+<div class="overlay" id="teamOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>จัดการทีมผู้รับเหมา</h2>
+      <button class="close" id="closeTeamModal">✕</button>
+    </div>
+    <div id="teamEditList"></div>
+    <div class="add-team-row">
+      <input type="text" id="newTeamInput" placeholder="ชื่อทีมใหม่ เช่น ทีม D">
+      <button class="btn btn-accent" id="addTeamBtn">+ เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const YEAR = 2026;
+const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+  "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const WEEKDAY_NAMES = ["อา","จ","อ","พ","พฤ","ศ","ส"];
+const PROJECTS = [
+  {key:'newsite', label:'New Site', cls:'newsite'},
+  {key:'retrofit', label:'Retrofit', cls:'retrofit'},
+  {key:'maintenance', label:'Maintenance', cls:'maintenance'}
+];
+
+let state = {
+  teams: ["ทีม A","ทีม B","ทีม C"],
+  assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
+};
+let currentMonth = 6; // 0-indexed, default July since today's date is 2026-07-03
+let activeDayKey = null;
+
+const todayKey = fmtKey(new Date(2026,6,3));
+
+function fmtKey(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function loadData(){
+  try{
+    const savedTeams = localStorage.getItem('calenda-teams');
+    if(savedTeams) state.teams = JSON.parse(savedTeams);
+  }catch(e){}
+  try{
+    const savedAssignments = localStorage.getItem('calenda-assignments');
+    if(savedAssignments) state.assignments = JSON.parse(savedAssignments);
+  }catch(e){}
+  render();
+}
+
+function saveTeams(){
+  try{ localStorage.setItem('calenda-teams', JSON.stringify(state.teams)); }
+  catch(e){ showToast('บันทึกทีมไม่สำเร็จ'); }
+}
+function saveAssignments(){
+  try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
+  catch(e){ showToast('บันทึกข้อมูลไม่สำเร็จ'); }
+}
+
+function renderLegend(){
+  const el = document.getElementById('legend');
+  el.innerHTML = PROJECTS.map(p=>`
+    <div class="legend-item">
+      <span class="swatch" style="background:var(--${p.cls})"></span>
+      <span>${p.label}</span>
+    </div>
+  `).join('');
+}
+
+function renderWeekdayRow(){
+  const el = document.getElementById('weekdayRow');
+  el.innerHTML = WEEKDAY_NAMES.map((d,i)=>
+    `<div class="${i===0||i===6?'weekend':''}">${d}</div>`
+  ).join('');
+}
+
+function daysInMonth(year, monthIdx){
+  return new Date(year, monthIdx+1, 0).getDate();
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent = `${MONTH_NAMES[currentMonth]} ${YEAR}`;
+  document.getElementById('prevBtn').disabled = currentMonth===0;
+  document.getElementById('nextBtn').disabled = currentMonth===11;
+
+  renderLegend();
+  renderWeekdayRow();
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(YEAR, currentMonth, 1).getDay(); // 0=Sun
+  const numDays = daysInMonth(YEAR, currentMonth);
+
+  for(let i=0;i<firstDay;i++){
+    const div = document.createElement('div');
+    div.className = 'day-cell empty-day';
+    grid.appendChild(div);
+  }
+
+  for(let d=1; d<=numDays; d++){
+    const dateObj = new Date(YEAR, currentMonth, d);
+    const key = fmtKey(dateObj);
+    const dow = dateObj.getDay();
+    const isWeekend = dow===0 || dow===6;
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (isWeekend?' weekend':'') + (key===todayKey?' today':'');
+    cell.dataset.key = key;
+
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num';
+    numEl.textContent = d;
+    cell.appendChild(numEl);
+
+    const tagsEl = document.createElement('div');
+    tagsEl.className = 'tags';
+    const dayAsg = state.assignments[key] || {};
+    const entries = Object.entries(dayAsg).filter(([,v])=>v);
+    const maxShow = 3;
+    entries.slice(0,maxShow).forEach(([team, projKey])=>{
+      const proj = PROJECTS.find(p=>p.key===projKey);
+      if(!proj) return;
+      const tag = document.createElement('div');
+      tag.className = `tag tag-${proj.cls}`;
+      tag.innerHTML = `<span class="cable"></span><span>${team}</span>`;
+      tagsEl.appendChild(tag);
+    });
+    if(entries.length > maxShow){
+      const more = document.createElement('div');
+      more.className = 'more-hint';
+      more.textContent = `+${entries.length - maxShow} เพิ่มเติม`;
+      tagsEl.appendChild(more);
+    }
+    cell.appendChild(tagsEl);
+
+    cell.addEventListener('click', ()=>openDayModal(key, dateObj));
+    grid.appendChild(cell);
+  }
+}
+
+function openDayModal(key, dateObj){
+  activeDayKey = key;
+  const title = `วันที่ ${dateObj.getDate()} ${MONTH_NAMES[currentMonth]} ${YEAR}`;
+  document.getElementById('dayModalTitle').textContent = title;
+
+  const listEl = document.getElementById('teamAssignList');
+  if(state.teams.length===0){
+    listEl.innerHTML = `<div class="empty-teams">ยังไม่มีทีม กด "จัดการทีม" เพื่อเพิ่มทีมผู้รับเหมา</div>`;
+  } else {
+    const dayAsg = state.assignments[key] || {};
+    listEl.innerHTML = state.teams.map(team=>{
+      const current = dayAsg[team] || '';
+      const btns = PROJECTS.map(p=>
+        `<button class="proj-btn p-${p.cls} ${current===p.key?'active':''}" data-team="${escapeAttr(team)}" data-proj="${p.key}" title="${p.label}"></button>`
+      ).join('');
+      const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="ไม่ระบุ">–</button>`;
+      return `<div class="team-row">
+        <div class="team-name">${escapeHtml(team)}</div>
+        <div class="proj-options">${btns}${clearBtn}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('dayOverlay').classList.add('open');
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+document.getElementById('teamAssignList').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.proj-btn');
+  if(!btn) return;
+  const team = btn.dataset.team;
+  const proj = btn.dataset.proj;
+  if(!state.assignments[activeDayKey]) state.assignments[activeDayKey] = {};
+  if(proj===''){
+    delete state.assignments[activeDayKey][team];
+    if(Object.keys(state.assignments[activeDayKey]).length===0) delete state.assignments[activeDayKey];
+  } else {
+    state.assignments[activeDayKey][team] = proj;
+  }
+  await saveAssignments();
+  const dateObj = new Date(YEAR, currentMonth, parseInt(document.getElementById('dayModalTitle').textContent.match(/\d+/)[0]));
+  openDayModal(activeDayKey, dateObj);
+  render();
+});
+
+document.getElementById('closeDayModal').addEventListener('click', ()=>{
+  document.getElementById('dayOverlay').classList.remove('open');
+});
+document.getElementById('dayOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='dayOverlay') document.getElementById('dayOverlay').classList.remove('open');
+});
+
+// Team management
+function renderTeamEditList(){
+  const el = document.getElementById('teamEditList');
+  if(state.teams.length===0){
+    el.innerHTML = `<div class="empty-teams">ยังไม่มีทีม เพิ่มทีมแรกด้านล่าง</div>`;
+    return;
+  }
+  el.innerHTML = state.teams.map((team, idx)=>`
+    <div class="team-edit-row">
+      <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input">
+      <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
+    </div>
+  `).join('');
+}
+
+document.getElementById('manageTeamsBtn').addEventListener('click', ()=>{
+  renderTeamEditList();
+  document.getElementById('teamOverlay').classList.add('open');
+});
+document.getElementById('closeTeamModal').addEventListener('click', async ()=>{
+  document.getElementById('teamOverlay').classList.remove('open');
+  render();
+});
+document.getElementById('teamOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='teamOverlay'){
+    document.getElementById('teamOverlay').classList.remove('open');
+    render();
+  }
+});
+
+document.getElementById('teamEditList').addEventListener('change', async (e)=>{
+  if(e.target.classList.contains('team-name-input')){
+    const idx = parseInt(e.target.dataset.idx);
+    const newName = e.target.value.trim();
+    if(!newName) return;
+    const oldName = state.teams[idx];
+    if(oldName === newName) return;
+    state.teams[idx] = newName;
+    Object.keys(state.assignments).forEach(dateKey=>{
+      const dayObj = state.assignments[dateKey];
+      if(dayObj[oldName] !== undefined){
+        dayObj[newName] = dayObj[oldName];
+        delete dayObj[oldName];
+      }
+    });
+    await saveTeams();
+    await saveAssignments();
+    showToast('อัปเดตชื่อทีมแล้ว');
+  }
+});
+
+document.getElementById('teamEditList').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.icon-btn');
+  if(!btn) return;
+  const idx = parseInt(btn.dataset.idx);
+  const removed = state.teams[idx];
+  state.teams.splice(idx,1);
+  Object.keys(state.assignments).forEach(dateKey=>{
+    delete state.assignments[dateKey][removed];
+    if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
+  });
+  await saveTeams();
+  await saveAssignments();
+  renderTeamEditList();
+  showToast(`ลบ ${removed} แล้ว`);
+});
+
+document.getElementById('addTeamBtn').addEventListener('click', addTeam);
+document.getElementById('newTeamInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') addTeam();
+});
+async function addTeam(){
+  const input = document.getElementById('newTeamInput');
+  const name = input.value.trim();
+  if(!name) return;
+  if(state.teams.includes(name)){ showToast('มีชื่อทีมนี้อยู่แล้ว'); return; }
+  state.teams.push(name);
+  input.value = '';
+  await saveTeams();
+  renderTeamEditList();
+  showToast(`เพิ่ม ${name} แล้ว`);
+}
+
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(currentMonth>0){ currentMonth--; render(); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(currentMonth<11){ currentMonth++; render(); }
+});
+
+loadData();
+</script>
+</body>
+</html>
+
