@@ -608,7 +608,7 @@ const REALTIME_DATA_PATH = "calenda/team-schedule-2026";
 
 let state = {
   teams: [...DEFAULT_TEAMS],
-  teamMembers: {},
+  dayMembers: {},
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
 let currentMonth = 6; // 0-indexed, default July since today's date is 2026-07-03
@@ -654,8 +654,8 @@ function loadLocalData(){
     if(savedTeams) state.teams = JSON.parse(savedTeams);
   }catch(e){}
   try{
-    const savedTeamMembers = localStorage.getItem('calenda-team-members');
-    if(savedTeamMembers) state.teamMembers = normalizeTeamMembers(JSON.parse(savedTeamMembers));
+    const savedDayMembers = localStorage.getItem('calenda-day-members');
+    if(savedDayMembers) state.dayMembers = normalizeDayMembers(JSON.parse(savedDayMembers));
   }catch(e){}
   try{
     const savedAssignments = localStorage.getItem('calenda-assignments');
@@ -667,7 +667,7 @@ function loadLocalData(){
 function saveLocalSnapshot(){
   try{ localStorage.setItem('calenda-teams', JSON.stringify(state.teams)); }
   catch(e){}
-  try{ localStorage.setItem('calenda-team-members', JSON.stringify(state.teamMembers)); }
+  try{ localStorage.setItem('calenda-day-members', JSON.stringify(state.dayMembers)); }
   catch(e){}
   try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
   catch(e){}
@@ -719,7 +719,7 @@ async function initRealtimeSync(){
 
       if(remoteData){
         state.teams = Array.isArray(remoteData.teams) ? remoteData.teams : [...DEFAULT_TEAMS];
-        state.teamMembers = normalizeTeamMembers(remoteData.teamMembers || {});
+        state.dayMembers = normalizeDayMembers(remoteData.dayMembers || {});
         state.assignments = remoteData.assignments && typeof remoteData.assignments === "object"
           ? remoteData.assignments
           : {};
@@ -757,7 +757,7 @@ async function pushRemoteState(errorMessage){
   try{
     await sync.setRemote(sync.dataRef, {
       teams: state.teams,
-      teamMembers: state.teamMembers,
+      dayMembers: state.dayMembers,
       assignments: state.assignments,
       updatedAt: new Date().toISOString()
     });
@@ -785,12 +785,12 @@ function refreshOpenModals(){
 
 function normalizeState(){
   state.teams = Array.isArray(state.teams) ? state.teams : [...DEFAULT_TEAMS];
-  state.teamMembers = normalizeTeamMembers(state.teamMembers || {});
-  state.teams.forEach(team=>{
-    if(!Array.isArray(state.teamMembers[team])) state.teamMembers[team] = [];
-  });
-  Object.keys(state.teamMembers).forEach(team=>{
-    if(!state.teams.includes(team)) delete state.teamMembers[team];
+  state.dayMembers = normalizeDayMembers(state.dayMembers || {});
+  Object.keys(state.dayMembers).forEach(dateKey=>{
+    Object.keys(state.dayMembers[dateKey]).forEach(team=>{
+      if(!state.teams.includes(team)) delete state.dayMembers[dateKey][team];
+    });
+    if(Object.keys(state.dayMembers[dateKey]).length===0) delete state.dayMembers[dateKey];
   });
 }
 
@@ -804,6 +804,14 @@ function normalizeTeamMembers(value){
   ]));
 }
 
+function normalizeDayMembers(value){
+  if(!value || typeof value !== "object") return {};
+  return Object.fromEntries(Object.entries(value).map(([dateKey, membersByTeam])=>[
+    dateKey,
+    normalizeTeamMembers(membersByTeam)
+  ]));
+}
+
 function parseMembersText(value){
   return String(value || "")
     .split(/[\n,]+/)
@@ -812,8 +820,13 @@ function parseMembersText(value){
 }
 
 function formatMembers(team){
-  const members = state.teamMembers[team] || [];
-  return members.length ? members.join(", ") : "ยังไม่ได้ระบุสมาชิก";
+  const members = getDayMembers(team);
+  return members.length ? members.join(", ") : "ยังไม่ได้ระบุสมาชิกในวันนี้";
+}
+
+function getDayMembers(team){
+  if(!activeDayKey) return [];
+  return state.dayMembers[activeDayKey]?.[team] || [];
 }
 
 function renderLegend(){
@@ -935,14 +948,14 @@ function escapeAttr(s){ return escapeHtml(s); }
 function renderMemberControls(team){
   return `
     <div class="member-editor">
-      <div class="member-editor-title">สมาชิกในทีม</div>
+      <div class="member-editor-title">สมาชิกของทีมนี้ในวันนี้</div>
       <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
-        ${(state.teamMembers[team] || []).map(member=>`
+        ${getDayMembers(team).map(member=>`
           <div class="member-chip" title="${escapeAttr(member)}">
             <span>${escapeHtml(member)}</span>
             <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
           </div>
-        `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกในทีมนี้</div>`}
+        `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกของทีมนี้ในวันนี้</div>`}
       </div>
       <div class="member-add-row">
         <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
@@ -1012,8 +1025,7 @@ function renderTeamEditList(){
     <div class="team-edit-row">
       <div class="team-edit-fields">
         <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="ชื่อทีม">
-        ${renderMemberControls(team)}
-        <div class="field-hint">เพิ่มได้เรื่อย ๆ และลบรายชื่อได้ทีละคน</div>
+        <div class="field-hint">เพิ่มสมาชิกจากหน้าวันที่ในปฏิทิน</div>
       </div>
       <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
     </div>
@@ -1048,10 +1060,15 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
       return;
     }
     state.teams[idx] = newName;
-    state.teamMembers[newName] = state.teamMembers[oldName] || [];
-    delete state.teamMembers[oldName];
     Object.keys(state.assignments).forEach(dateKey=>{
       const dayObj = state.assignments[dateKey];
+      if(dayObj[oldName] !== undefined){
+        dayObj[newName] = dayObj[oldName];
+        delete dayObj[oldName];
+      }
+    });
+    Object.keys(state.dayMembers).forEach(dateKey=>{
+      const dayObj = state.dayMembers[dateKey];
       if(dayObj[oldName] !== undefined){
         dayObj[newName] = dayObj[oldName];
         delete dayObj[oldName];
@@ -1065,29 +1082,18 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
 });
 
 document.getElementById('teamEditList').addEventListener('click', async (e)=>{
-  const addMemberBtn = e.target.closest('.member-add-btn');
-  if(addMemberBtn){
-    const team = addMemberBtn.dataset.team;
-    const input = addMemberBtn.parentElement.querySelector('.member-name-input');
-    await addMember(team, input);
-    return;
-  }
-
-  const removeMemberBtn = e.target.closest('.member-remove-btn');
-  if(removeMemberBtn){
-    await removeMember(removeMemberBtn.dataset.team, removeMemberBtn.dataset.member, 'team');
-    return;
-  }
-
   const btn = e.target.closest('.icon-btn');
   if(!btn) return;
   const idx = parseInt(btn.dataset.idx);
   const removed = state.teams[idx];
   state.teams.splice(idx,1);
-  delete state.teamMembers[removed];
   Object.keys(state.assignments).forEach(dateKey=>{
     delete state.assignments[dateKey][removed];
     if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
+  });
+  Object.keys(state.dayMembers).forEach(dateKey=>{
+    delete state.dayMembers[dateKey][removed];
+    if(Object.keys(state.dayMembers[dateKey]).length===0) delete state.dayMembers[dateKey];
   });
   await saveTeams();
   await saveAssignments();
@@ -1095,21 +1101,17 @@ document.getElementById('teamEditList').addEventListener('click', async (e)=>{
   showToast(`ลบ ${removed} แล้ว`);
 });
 
-document.getElementById('teamEditList').addEventListener('keydown', async (e)=>{
-  if(e.key !== 'Enter' || !e.target.classList.contains('member-name-input')) return;
-  e.preventDefault();
-  await addMember(e.target.dataset.team, e.target);
-});
-
 async function addMember(team, input){
   const member = input.value.trim();
   if(!member) return;
-  if(!state.teamMembers[team]) state.teamMembers[team] = [];
-  if(state.teamMembers[team].includes(member)){
+  if(!activeDayKey) return;
+  if(!state.dayMembers[activeDayKey]) state.dayMembers[activeDayKey] = {};
+  if(!state.dayMembers[activeDayKey][team]) state.dayMembers[activeDayKey][team] = [];
+  if(state.dayMembers[activeDayKey][team].includes(member)){
     showToast('มีชื่อสมาชิกนี้อยู่แล้ว');
     return;
   }
-  state.teamMembers[team].push(member);
+  state.dayMembers[activeDayKey][team].push(member);
   input.value = '';
   await saveTeams();
   refreshMemberViews();
@@ -1117,7 +1119,10 @@ async function addMember(team, input){
 }
 
 async function removeMember(team, member){
-  state.teamMembers[team] = (state.teamMembers[team] || []).filter(name => name !== member);
+  if(!activeDayKey || !state.dayMembers[activeDayKey]?.[team]) return;
+  state.dayMembers[activeDayKey][team] = state.dayMembers[activeDayKey][team].filter(name => name !== member);
+  if(state.dayMembers[activeDayKey][team].length===0) delete state.dayMembers[activeDayKey][team];
+  if(Object.keys(state.dayMembers[activeDayKey]).length===0) delete state.dayMembers[activeDayKey];
   await saveTeams();
   refreshMemberViews();
   showToast(`ลบ ${member} แล้ว`);
@@ -1145,7 +1150,6 @@ async function addTeam(){
   if(!name) return;
   if(state.teams.includes(name)){ showToast('มีชื่อทีมนี้อยู่แล้ว'); return; }
   state.teams.push(name);
-  state.teamMembers[name] = [];
   input.value = '';
   await saveTeams();
   renderTeamEditList();
