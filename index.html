@@ -141,6 +141,7 @@
   .sync-status.online::before{background:var(--maintenance);}
   .sync-status.connecting::before{background:var(--accent);}
   .sync-status.offline::before{background:var(--danger);}
+  .hidden{display:none!important;}
   .swatch{
     width:10px;height:10px;
     border-radius:2px;
@@ -426,6 +427,7 @@
     <div class="legend" id="legend"></div>
     <div class="toolbar-actions">
       <span class="sync-status" id="syncStatus">Local only</span>
+      <button class="btn hidden" id="syncNowBtn" type="button">อัปโหลดข้อมูลเครื่องนี้</button>
       <button class="btn" id="manageTeamsBtn">⚙ จัดการทีม</button>
     </div>
   </div>
@@ -570,6 +572,10 @@ function setSyncStatus(mode, text){
   el.className = `sync-status ${mode}`;
 }
 
+function setSyncUploadVisible(visible){
+  document.getElementById('syncNowBtn').classList.toggle('hidden', !visible);
+}
+
 async function initRealtimeSync(){
   setSyncStatus("connecting", "Connecting");
 
@@ -595,20 +601,25 @@ async function initRealtimeSync(){
         render();
         refreshOpenModals();
         setSyncStatus("online", "Realtime");
+        setSyncUploadVisible(false);
         return;
       }
 
-      await pushRemoteState('เริ่ม realtime ไม่สำเร็จ');
+      setSyncStatus("online", "Realtime ready");
+      setSyncUploadVisible(true);
+      showToast('ฐานข้อมูลกลางยังว่าง เลือกอัปโหลดจากเครื่องที่มีข้อมูลล่าสุด');
     }, (error)=>{
       console.error(error);
       sync.mode = "local";
       setSyncStatus("offline", "Local fallback");
+      setSyncUploadVisible(false);
       showToast('เชื่อม realtime ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
     });
   }catch(error){
     console.error(error);
     sync.mode = "local";
     setSyncStatus("offline", "Local fallback");
+    setSyncUploadVisible(false);
     showToast('โหลด Firebase ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
   }
 }
@@ -623,6 +634,7 @@ async function pushRemoteState(errorMessage){
       updatedAt: new Date().toISOString()
     });
     setSyncStatus("online", "Realtime");
+    setSyncUploadVisible(false);
   }catch(error){
     console.error(error);
     setSyncStatus("offline", "Sync error");
@@ -868,6 +880,11 @@ document.getElementById('prevBtn').addEventListener('click', ()=>{
 });
 document.getElementById('nextBtn').addEventListener('click', ()=>{
   if(currentMonth<11){ currentMonth++; render(); }
+});
+document.getElementById('syncNowBtn').addEventListener('click', async ()=>{
+  saveLocalSnapshot();
+  await pushRemoteState('อัปโหลดข้อมูลไม่สำเร็จ');
+  if(sync.mode === "realtime") showToast('อัปโหลดข้อมูลเครื่องนี้แล้ว');
 });
 
 loadData();
