@@ -251,9 +251,6 @@
     background:rgba(0,0,0,.25);
     flex:none;
   }
-  .tag-newsite{background:color-mix(in srgb, var(--newsite) 85%, white 0%);}
-  .tag-retrofit{background:var(--retrofit);}
-  .tag-maintenance{background:var(--maintenance);}
   .more-hint{
     font-size:10px;
     color:var(--text-faint);
@@ -342,9 +339,6 @@
   }
   .proj-btn:hover{opacity:.8;transform:scale(1.06);}
   .proj-btn.active{opacity:1;border-color:#fff;}
-  .proj-btn.p-newsite{background:var(--newsite);}
-  .proj-btn.p-retrofit{background:var(--retrofit);}
-  .proj-btn.p-maintenance{background:var(--maintenance);}
   .proj-btn.p-clear{background:var(--surface-light);color:var(--text-secondary);font-size:12px;opacity:.7;}
   .proj-btn.p-clear:hover{opacity:1;}
 
@@ -396,11 +390,11 @@
   }
   .color-list{
     display:grid;
-    grid-template-columns:repeat(3,minmax(0,1fr));
     gap:8px;
   }
   .color-control{
-    display:flex;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
     align-items:center;
     gap:8px;
     min-width:0;
@@ -409,14 +403,18 @@
     border-radius:8px;
     padding:7px 8px;
   }
-  .color-control span{
+  .project-label-input{
     min-width:0;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
+    height:32px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:rgba(15,27,45,.34);
     font-size:12px;
     color:var(--text-primary);
+    padding:0 9px;
+    font-family:var(--font-body);
   }
+  .project-label-input:focus{outline:none;border-color:var(--accent);}
   .project-color-input{
     width:32px;
     height:32px;
@@ -431,6 +429,44 @@
   .project-color-input::-webkit-color-swatch{
     border:2px solid rgba(255,255,255,.55);
     border-radius:50%;
+  }
+  .project-remove-btn{
+    width:30px;
+    height:30px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:transparent;
+    color:var(--text-secondary);
+    cursor:pointer;
+  }
+  .project-remove-btn:hover{
+    border-color:var(--danger);
+    color:var(--danger);
+  }
+  .add-project-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 44px auto;
+    gap:8px;
+    margin-top:8px;
+  }
+  .add-project-row input[type="text"]{
+    min-width:0;
+    height:36px;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:var(--surface-light);
+    color:var(--text-primary);
+    padding:0 10px;
+    font-family:var(--font-body);
+    font-size:12px;
+  }
+  .add-project-row input[type="color"]{
+    width:44px;
+    height:36px;
+    padding:0;
+    border:0;
+    background:transparent;
+    cursor:pointer;
   }
   .member-list{
     display:flex;
@@ -656,8 +692,13 @@
       <button class="close" id="closeTeamModal">✕</button>
     </div>
     <div class="color-settings">
-      <div class="settings-title">สีปุ่มงาน</div>
+      <div class="settings-title">รายการสีงาน</div>
       <div class="color-list" id="projectColorList"></div>
+      <div class="add-project-row">
+        <input type="text" id="newProjectLabel" placeholder="ชื่อสีใหม่ เช่น งานด่วน">
+        <input type="color" id="newProjectColor" value="#7C6BFF" aria-label="สีใหม่">
+        <button class="btn" id="addProjectBtn" type="button">+ สี</button>
+      </div>
     </div>
     <div id="teamEditList"></div>
     <div class="add-team-row">
@@ -675,12 +716,11 @@ const YEAR_OPTIONS = Array.from({length:12}, (_,idx)=>2024 + idx);
 const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
   "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const WEEKDAY_NAMES = ["อา","จ","อ","พ","พฤ","ศ","ส"];
-const PROJECTS = [
-  {key:'newsite', label:'New Site', cls:'newsite', color:'#4C9AFF'},
-  {key:'retrofit', label:'Retrofit', cls:'retrofit', color:'#F2A65A'},
-  {key:'maintenance', label:'Maintenance', cls:'maintenance', color:'#52C77E'}
+const DEFAULT_PROJECT_OPTIONS = [
+  {key:'newsite', label:'New Site', color:'#4C9AFF'},
+  {key:'retrofit', label:'Retrofit', color:'#F2A65A'},
+  {key:'maintenance', label:'Maintenance', color:'#52C77E'}
 ];
-const DEFAULT_PROJECT_COLORS = Object.fromEntries(PROJECTS.map(p=>[p.key, p.color]));
 const DEFAULT_TEAMS = ["ทีม A","ทีม B","ทีม C"];
 
 // ใส่ค่า Firebase config ตรงนี้เพื่อเปิด realtime sync ข้ามเครื่อง
@@ -699,7 +739,7 @@ const REALTIME_DATA_PATH = "calenda/team-schedule-2026";
 let state = {
   teams: [...DEFAULT_TEAMS],
   dayMembers: {},
-  projectColors: {...DEFAULT_PROJECT_COLORS},
+  projectOptions: DEFAULT_PROJECT_OPTIONS.map(project=>({...project})),
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
 let currentYear = DEFAULT_YEAR;
@@ -750,8 +790,13 @@ function loadLocalData(){
     if(savedDayMembers) state.dayMembers = normalizeDayMembers(JSON.parse(savedDayMembers));
   }catch(e){}
   try{
+    const savedProjectOptions = localStorage.getItem('calenda-project-options');
     const savedProjectColors = localStorage.getItem('calenda-project-colors');
-    if(savedProjectColors) state.projectColors = normalizeProjectColors(JSON.parse(savedProjectColors));
+    if(savedProjectOptions){
+      state.projectOptions = normalizeProjectOptions(JSON.parse(savedProjectOptions));
+    } else if(savedProjectColors){
+      state.projectOptions = normalizeProjectOptions(null, JSON.parse(savedProjectColors));
+    }
   }catch(e){}
   try{
     const savedAssignments = localStorage.getItem('calenda-assignments');
@@ -765,7 +810,7 @@ function saveLocalSnapshot(){
   catch(e){}
   try{ localStorage.setItem('calenda-day-members', JSON.stringify(state.dayMembers)); }
   catch(e){}
-  try{ localStorage.setItem('calenda-project-colors', JSON.stringify(state.projectColors)); }
+  try{ localStorage.setItem('calenda-project-options', JSON.stringify(state.projectOptions)); }
   catch(e){}
   try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
   catch(e){}
@@ -779,9 +824,9 @@ async function saveAssignments(){
   saveLocalSnapshot();
   await pushRemoteState('บันทึกข้อมูลไม่สำเร็จ');
 }
-async function saveProjectColors(){
+async function saveProjectOptions(){
   saveLocalSnapshot();
-  await pushRemoteState('บันทึกสีไม่สำเร็จ');
+  await pushRemoteState('บันทึกรายการสีไม่สำเร็จ');
 }
 
 function hasFirebaseConfig(){
@@ -822,7 +867,7 @@ async function initRealtimeSync(){
       if(remoteData){
         state.teams = Array.isArray(remoteData.teams) ? remoteData.teams : [...DEFAULT_TEAMS];
         state.dayMembers = normalizeDayMembers(remoteData.dayMembers || {});
-        state.projectColors = normalizeProjectColors(remoteData.projectColors || {});
+        state.projectOptions = normalizeProjectOptions(remoteData.projectOptions, remoteData.projectColors);
         state.assignments = remoteData.assignments && typeof remoteData.assignments === "object"
           ? remoteData.assignments
           : {};
@@ -861,7 +906,7 @@ async function pushRemoteState(errorMessage){
     await sync.setRemote(sync.dataRef, {
       teams: state.teams,
       dayMembers: state.dayMembers,
-      projectColors: state.projectColors,
+      projectOptions: state.projectOptions,
       assignments: state.assignments,
       updatedAt: new Date().toISOString()
     });
@@ -891,14 +936,21 @@ function refreshOpenModals(){
 function normalizeState(){
   state.teams = Array.isArray(state.teams) ? state.teams : [...DEFAULT_TEAMS];
   state.dayMembers = normalizeDayMembers(state.dayMembers || {});
-  state.projectColors = normalizeProjectColors(state.projectColors || {});
+  state.projectOptions = normalizeProjectOptions(state.projectOptions, state.projectColors);
+  state.assignments = state.assignments && typeof state.assignments === "object" ? state.assignments : {};
   Object.keys(state.dayMembers).forEach(dateKey=>{
     Object.keys(state.dayMembers[dateKey]).forEach(team=>{
       if(!state.teams.includes(team)) delete state.dayMembers[dateKey][team];
     });
     if(Object.keys(state.dayMembers[dateKey]).length===0) delete state.dayMembers[dateKey];
   });
-  applyProjectColors();
+  const validProjectKeys = new Set(getProjectOptions().map(project=>project.key));
+  Object.keys(state.assignments || {}).forEach(dateKey=>{
+    Object.keys(state.assignments[dateKey]).forEach(team=>{
+      if(!validProjectKeys.has(state.assignments[dateKey][team])) delete state.assignments[dateKey][team];
+    });
+    if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
+  });
 }
 
 function normalizeTeamMembers(value){
@@ -919,19 +971,51 @@ function normalizeDayMembers(value){
   ]));
 }
 
-function normalizeProjectColors(value){
-  const colors = {...DEFAULT_PROJECT_COLORS};
-  PROJECTS.forEach(project=>{
-    const color = String(value?.[project.key] || "").trim();
-    if(/^#[0-9a-f]{6}$/i.test(color)) colors[project.key] = color;
+function normalizeProjectOptions(value, legacyColors){
+  const hasOptions = Array.isArray(value) && value.length;
+  const source = hasOptions ? value : DEFAULT_PROJECT_OPTIONS;
+  const usedKeys = new Set();
+  const options = source.map((project, idx)=>{
+    const fallback = DEFAULT_PROJECT_OPTIONS[idx] || {};
+    let key = String(project?.key || fallback.key || `project-${idx + 1}`).trim();
+    key = key.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() || `project-${idx + 1}`;
+    while(usedKeys.has(key)) key = `${key}-${idx + 1}`;
+    usedKeys.add(key);
+    const label = String(project?.label || fallback.label || `สี ${idx + 1}`).trim();
+    const color = String((hasOptions ? project?.color : legacyColors?.[key]) || project?.color || fallback.color || '#4C9AFF').trim();
+    return {
+      key,
+      label,
+      color:/^#[0-9a-f]{6}$/i.test(color) ? color : '#4C9AFF'
+    };
   });
-  return colors;
+  return options.length ? options : DEFAULT_PROJECT_OPTIONS.map(project=>({...project}));
 }
 
-function applyProjectColors(){
-  PROJECTS.forEach(project=>{
-    document.documentElement.style.setProperty(`--${project.cls}`, state.projectColors[project.key]);
-  });
+function getProjectOptions(){
+  return Array.isArray(state.projectOptions) && state.projectOptions.length
+    ? state.projectOptions
+    : DEFAULT_PROJECT_OPTIONS;
+}
+
+function getProjectByKey(key){
+  return getProjectOptions().find(project=>project.key === key);
+}
+
+function makeProjectKey(label){
+  const base = String(label || "project")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "project";
+  const usedKeys = new Set(getProjectOptions().map(project=>project.key));
+  let key = base;
+  let counter = 2;
+  while(usedKeys.has(key)){
+    key = `${base}-${counter}`;
+    counter++;
+  }
+  return key;
 }
 
 function parseMembersText(value){
@@ -1028,10 +1112,11 @@ function render(){
     const entries = Object.entries(dayAsg).filter(([,v])=>v);
     const maxShow = 3;
     entries.slice(0,maxShow).forEach(([team, projKey])=>{
-      const proj = PROJECTS.find(p=>p.key===projKey);
+      const proj = getProjectByKey(projKey);
       if(!proj) return;
       const tag = document.createElement('div');
-      tag.className = `tag tag-${proj.cls}`;
+      tag.className = 'tag';
+      tag.style.background = proj.color;
       tag.innerHTML = `<span class="cable"></span><span>${team}</span>`;
       tagsEl.appendChild(tag);
     });
@@ -1060,8 +1145,8 @@ function openDayModal(key, dateObj){
     const dayAsg = state.assignments[key] || {};
     listEl.innerHTML = state.teams.map((team, idx)=>{
       const current = dayAsg[team] || '';
-      const btns = PROJECTS.map(p=>
-        `<button class="proj-btn p-${p.cls} ${current===p.key?'active':''}" data-team="${escapeAttr(team)}" data-proj="${p.key}" title="${p.label}"></button>`
+      const btns = getProjectOptions().map(p=>
+        `<button class="proj-btn ${current===p.key?'active':''}" style="background:${escapeAttr(p.color)}" data-team="${escapeAttr(team)}" data-proj="${escapeAttr(p.key)}" title="${escapeAttr(p.label)}"></button>`
       ).join('');
       const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="ไม่ระบุ">–</button>`;
       return `<div class="team-row">
@@ -1162,11 +1247,12 @@ document.getElementById('dayOverlay').addEventListener('click', (e)=>{
 // Team management
 function renderProjectColorList(){
   const el = document.getElementById('projectColorList');
-  el.innerHTML = PROJECTS.map(project=>`
-    <label class="color-control">
-      <input class="project-color-input" type="color" data-project="${project.key}" value="${escapeAttr(state.projectColors[project.key])}" aria-label="สี ${project.label}">
-      <span>${project.label}</span>
-    </label>
+  el.innerHTML = getProjectOptions().map(project=>`
+    <div class="color-control">
+      <input class="project-color-input" type="color" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.color)}" aria-label="สี ${escapeAttr(project.label)}">
+      <input class="project-label-input" type="text" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.label)}" aria-label="ชื่อรายการสี">
+      <button class="project-remove-btn" type="button" data-project="${escapeAttr(project.key)}" title="ลบรายการสี">×</button>
+    </div>
   `).join('');
 }
 
@@ -1204,20 +1290,76 @@ document.getElementById('teamOverlay').addEventListener('click', (e)=>{
 });
 
 document.getElementById('projectColorList').addEventListener('input', (e)=>{
-  if(!e.target.classList.contains('project-color-input')) return;
-  state.projectColors[e.target.dataset.project] = e.target.value;
-  applyProjectColors();
+  const project = getProjectByKey(e.target.dataset.project);
+  if(!project) return;
+  if(e.target.classList.contains('project-color-input')){
+    project.color = e.target.value;
+    document.querySelectorAll('.proj-btn').forEach(btn=>{
+      if(btn.dataset.proj === project.key) btn.style.background = project.color;
+    });
+  }
+  if(e.target.classList.contains('project-label-input')){
+    project.label = e.target.value.trim() || project.label;
+  }
 });
 
 document.getElementById('projectColorList').addEventListener('change', async (e)=>{
-  if(!e.target.classList.contains('project-color-input')) return;
-  state.projectColors = normalizeProjectColors(state.projectColors);
-  applyProjectColors();
+  const project = getProjectByKey(e.target.dataset.project);
+  if(!project) return;
+  if(e.target.classList.contains('project-color-input')) project.color = e.target.value;
+  if(e.target.classList.contains('project-label-input')) project.label = e.target.value.trim() || project.label;
+  state.projectOptions = normalizeProjectOptions(state.projectOptions);
   saveLocalSnapshot();
   render();
   refreshOpenModals();
-  await saveProjectColors();
-  showToast('อัปเดตสีแล้ว');
+  await saveProjectOptions();
+  showToast('อัปเดตรายการสีแล้ว');
+});
+
+document.getElementById('projectColorList').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.project-remove-btn');
+  if(!btn) return;
+  if(getProjectOptions().length <= 1){
+    showToast('ต้องมีอย่างน้อย 1 สี');
+    return;
+  }
+  const removedKey = btn.dataset.project;
+  state.projectOptions = getProjectOptions().filter(project=>project.key !== removedKey);
+  Object.keys(state.assignments).forEach(dateKey=>{
+    Object.keys(state.assignments[dateKey]).forEach(team=>{
+      if(state.assignments[dateKey][team] === removedKey) delete state.assignments[dateKey][team];
+    });
+    if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
+  });
+  saveLocalSnapshot();
+  render();
+  refreshOpenModals();
+  await saveProjectOptions();
+  showToast('ลบรายการสีแล้ว');
+});
+
+document.getElementById('addProjectBtn').addEventListener('click', async ()=>{
+  const labelInput = document.getElementById('newProjectLabel');
+  const colorInput = document.getElementById('newProjectColor');
+  const label = labelInput.value.trim() || `สี ${getProjectOptions().length + 1}`;
+  state.projectOptions.push({
+    key:makeProjectKey(label),
+    label,
+    color:colorInput.value
+  });
+  labelInput.value = '';
+  state.projectOptions = normalizeProjectOptions(state.projectOptions);
+  saveLocalSnapshot();
+  render();
+  refreshOpenModals();
+  await saveProjectOptions();
+  showToast('เพิ่มรายการสีแล้ว');
+});
+
+document.getElementById('newProjectLabel').addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  document.getElementById('addProjectBtn').click();
 });
 
 document.getElementById('teamEditList').addEventListener('change', async (e)=>{
