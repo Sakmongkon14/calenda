@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>ปฏิทินทีมผู้รับเหมา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-base:#0F1B2D;
@@ -19,7 +22,8 @@
     --maintenance:#52C77E;
     --danger:#E0654F;
     --radius:10px;
-    --font-body:'Sarabun','Noto Sans Thai',Tahoma,sans-serif;
+    --font-body:'Noto Sans Thai',Tahoma,sans-serif;
+    --font-display:'Kanit','Noto Sans Thai',Tahoma,sans-serif;
   }
   *{box-sizing:border-box;}
   body{
@@ -28,6 +32,7 @@
     color:var(--text-primary);
     font-family:var(--font-body);
     -webkit-font-smoothing:antialiased;
+    text-rendering:geometricPrecision;
   }
   .app{
     max-width:1100px;
@@ -50,17 +55,20 @@
     gap:2px;
   }
   .header-title .eyebrow{
+    font-family:var(--font-display);
     font-size:11px;
-    letter-spacing:.14em;
+    letter-spacing:0;
     text-transform:uppercase;
     color:var(--accent);
-    font-weight:600;
+    font-weight:700;
   }
   .header-title h1{
     margin:0;
-    font-size:22px;
-    font-weight:700;
-    letter-spacing:.01em;
+    font-family:var(--font-display);
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:0;
+    line-height:1.12;
   }
   .month-nav{
     display:flex;
@@ -89,6 +97,7 @@
     align-items:center;
     justify-content:center;
     gap:6px;
+    font-family:var(--font-display);
     font-weight:700;
     min-width:140px;
     text-align:center;
@@ -149,7 +158,7 @@
   .sync-status.offline::before{background:var(--danger);}
   .hidden{display:none!important;}
   .btn{
-    font-family:var(--font-body);
+    font-family:var(--font-display);
     border:1px solid var(--border);
     background:var(--surface);
     color:var(--text-primary);
@@ -181,7 +190,7 @@
   .weekday-row div{
     text-align:center;
     font-size:11px;
-    letter-spacing:.08em;
+    letter-spacing:0;
     text-transform:uppercase;
     color:var(--text-faint);
     font-weight:700;
@@ -219,8 +228,9 @@
     box-shadow:0 0 0 1px var(--accent) inset;
   }
   .day-num{
-    font-size:13px;
-    font-weight:700;
+    font-family:var(--font-display);
+    font-size:15px;
+    font-weight:800;
     color:var(--text-primary);
   }
   .day-cell.weekend .day-num{color:var(--danger);}
@@ -234,6 +244,7 @@
     display:flex;
     align-items:center;
     gap:5px;
+    font-family:var(--font-display);
     font-size:10.5px;
     color:#0B1220;
     background:var(--newsite);
@@ -285,7 +296,9 @@
   }
   .modal-header h2{
     margin:0;
-    font-size:17px;
+    font-family:var(--font-display);
+    font-size:19px;
+    font-weight:800;
   }
   .modal-header .close{
     background:none;border:none;color:var(--text-secondary);
@@ -301,8 +314,9 @@
   }
   .team-row:last-child{border-bottom:none;}
   .team-name{
-    font-size:13.5px;
-    font-weight:600;
+    font-family:var(--font-display);
+    font-size:14.5px;
+    font-weight:700;
     flex:1;
     min-width:0;
     overflow:hidden;
@@ -372,7 +386,8 @@
     color:var(--text-primary);
     padding:8px 10px;
     font-family:var(--font-body);
-    font-size:13px;
+    font-size:13.5px;
+    font-weight:600;
   }
   .team-edit-row input:focus{outline:none;border-color:var(--accent);}
   .color-settings{
@@ -383,6 +398,7 @@
     margin-bottom:12px;
   }
   .settings-title{
+    font-family:var(--font-display);
     color:var(--text-secondary);
     font-size:11px;
     font-weight:700;
@@ -413,6 +429,7 @@
     color:var(--text-primary);
     padding:0 9px;
     font-family:var(--font-body);
+    font-weight:600;
   }
   .project-label-input:focus{outline:none;border-color:var(--accent);}
   .project-color-input{
@@ -458,6 +475,7 @@
     color:var(--text-primary);
     padding:0 10px;
     font-family:var(--font-body);
+    font-weight:600;
     font-size:12px;
   }
   .add-project-row input[type="color"]{
@@ -499,6 +517,7 @@
     min-width:0;
   }
   .member-editor-title{
+    font-family:var(--font-display);
     color:var(--text-secondary);
     font-size:11px;
     font-weight:700;
@@ -513,6 +532,7 @@
     border:1px solid var(--border);
     background:var(--surface-hover);
     color:var(--text-primary);
+    font-family:var(--font-display);
     border-radius:999px;
     padding:5px 7px 5px 9px;
     font-size:12px;
@@ -560,6 +580,7 @@
     color:var(--text-primary);
     padding:0 12px;
     font-family:var(--font-body);
+    font-weight:600;
     font-size:13px;
   }
   .member-add-row input::placeholder{color:var(--text-faint);}
@@ -608,6 +629,7 @@
     color:var(--text-primary);
     padding:8px 10px;
     font-family:var(--font-body);
+    font-weight:600;
     font-size:13px;
   }
 
@@ -632,7 +654,7 @@
     .day-cell{min-height:70px;padding:6px;}
     .tag{font-size:9.5px;}
     .month-nav .label{min-width:118px;font-size:13px;}
-    .header-title h1{font-size:18px;}
+    .header-title h1{font-size:20px;}
     .team-row{grid-template-columns:1fr;}
     .proj-options{grid-row:2;}
     .color-list{grid-template-columns:1fr;}
