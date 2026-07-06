@@ -855,6 +855,19 @@ function getDayMembers(team){
   return state.dayMembers[activeDayKey]?.[team] || [];
 }
 
+function collectMemberOptions(team){
+  const usedToday = new Set(getDayMembers(team));
+  const names = new Set();
+  Object.values(state.dayMembers || {}).forEach(membersByTeam=>{
+    Object.values(membersByTeam || {}).forEach(members=>{
+      (members || []).forEach(member=>{
+        if(!usedToday.has(member)) names.add(member);
+      });
+    });
+  });
+  return Array.from(names).sort((a,b)=>a.localeCompare(b, 'th'));
+}
+
 function renderLegend(){
   const el = document.getElementById('legend');
   el.innerHTML = PROJECTS.map(p=>`
@@ -946,7 +959,7 @@ function openDayModal(key, dateObj){
     listEl.innerHTML = `<div class="empty-teams">ยังไม่มีทีม กด "จัดการทีม" เพื่อเพิ่มทีมผู้รับเหมา</div>`;
   } else {
     const dayAsg = state.assignments[key] || {};
-    listEl.innerHTML = state.teams.map(team=>{
+    listEl.innerHTML = state.teams.map((team, idx)=>{
       const current = dayAsg[team] || '';
       const btns = PROJECTS.map(p=>
         `<button class="proj-btn p-${p.cls} ${current===p.key?'active':''}" data-team="${escapeAttr(team)}" data-proj="${p.key}" title="${p.label}"></button>`
@@ -958,7 +971,7 @@ function openDayModal(key, dateObj){
           <div class="team-members" title="${escapeAttr(formatMembers(team))}">${escapeHtml(formatMembers(team))}</div>
         </div>
         <div class="proj-options">${btns}${clearBtn}</div>
-        ${renderMemberControls(team)}
+        ${renderMemberControls(team, idx)}
       </div>`;
     }).join('');
   }
@@ -971,7 +984,11 @@ function escapeHtml(s){
 }
 function escapeAttr(s){ return escapeHtml(s); }
 
-function renderMemberControls(team){
+function renderMemberControls(team, idx){
+  const optionsId = `member-options-${idx}`;
+  const optionItems = collectMemberOptions(team).map(member=>
+    `<option value="${escapeAttr(member)}"></option>`
+  ).join('');
   return `
     <div class="member-editor">
       <div class="member-editor-title">สมาชิกวันนี้</div>
@@ -984,7 +1001,8 @@ function renderMemberControls(team){
         `).join('') || `<div class="field-hint">ยังไม่มี</div>`}
       </div>
       <div class="member-add-row">
-        <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
+        <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" list="${optionsId}" autocomplete="off" placeholder="เลือก/พิมพ์ชื่อสมาชิก" aria-label="เลือกหรือพิมพ์ชื่อสมาชิกของ ${escapeAttr(team)}">
+        <datalist id="${optionsId}">${optionItems}</datalist>
         <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
       </div>
     </div>
