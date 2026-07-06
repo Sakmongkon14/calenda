@@ -386,19 +386,26 @@
     flex-wrap:wrap;
     gap:6px;
     min-height:28px;
+    align-items:center;
+    flex:1 1 120px;
+    min-width:96px;
   }
   .member-editor{
-    display:grid;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
     gap:8px;
     border:1px solid rgba(143,163,191,.22);
     background:rgba(30,49,79,.58);
     border-radius:10px;
-    padding:10px;
+    padding:8px;
   }
   .member-editor-title{
     color:var(--text-secondary);
     font-size:11px;
     font-weight:700;
+    white-space:nowrap;
+    flex:0 0 auto;
   }
   .member-chip{
     display:inline-flex;
@@ -439,6 +446,8 @@
     grid-template-columns:minmax(0,1fr) auto;
     gap:8px;
     align-items:center;
+    flex:1 1 230px;
+    max-width:320px;
   }
   .member-add-row input{
     min-width:0;
@@ -522,6 +531,10 @@
     .tag{font-size:9.5px;}
     .month-nav .label{min-width:100px;font-size:13px;}
     .header-title h1{font-size:18px;}
+    .member-editor{align-items:stretch;}
+    .member-editor-title{width:100%;}
+    .member-list{min-width:100%;flex-basis:100%;}
+    .member-add-row{max-width:none;flex-basis:100%;}
   }
 </style>
 </head>
