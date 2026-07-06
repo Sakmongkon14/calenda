@@ -390,9 +390,7 @@
     min-width:0;
   }
   .member-editor{
-    display:flex;
-    align-items:center;
-    flex-wrap:wrap;
+    display:grid;
     gap:8px;
     border:1px solid rgba(143,163,191,.22);
     background:rgba(30,49,79,.58);
@@ -402,9 +400,15 @@
   .team-row > .member-editor{
     grid-column:1 / -1;
     display:grid;
-    grid-template-columns:max-content minmax(0,1fr);
     gap:8px;
     width:100%;
+  }
+  .member-list-row{
+    display:grid;
+    grid-template-columns:max-content minmax(0,1fr);
+    gap:8px;
+    align-items:center;
+    min-width:0;
   }
   .member-editor-title{
     color:var(--text-secondary);
@@ -543,8 +547,7 @@
     .header-title h1{font-size:18px;}
     .team-row{grid-template-columns:1fr;}
     .proj-options{grid-row:2;}
-    .team-row > .member-editor{grid-template-columns:1fr;}
-    .member-editor{align-items:stretch;}
+    .member-list-row{grid-template-columns:1fr;}
     .member-editor-title{width:100%;}
     .member-list{min-width:100%;flex-basis:100%;}
     .member-add-row{max-width:none;flex-basis:100%;}
@@ -991,14 +994,16 @@ function renderMemberControls(team, idx){
   ).join('');
   return `
     <div class="member-editor">
-      <div class="member-editor-title">สมาชิกวันนี้</div>
-      <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
-        ${getDayMembers(team).map(member=>`
-          <div class="member-chip" title="${escapeAttr(member)}">
-            <span>${escapeHtml(member)}</span>
-            <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
-          </div>
-        `).join('') || `<div class="field-hint">ยังไม่มี</div>`}
+      <div class="member-list-row">
+        <div class="member-editor-title">สมาชิกวันนี้</div>
+        <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
+          ${getDayMembers(team).map(member=>`
+            <div class="member-chip" title="${escapeAttr(member)}">
+              <span>${escapeHtml(member)}</span>
+              <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
+            </div>
+          `).join('') || `<div class="field-hint">ยังไม่มี</div>`}
+        </div>
       </div>
       <div class="member-add-row">
         <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" list="${optionsId}" autocomplete="off" placeholder="เลือก/พิมพ์ชื่อสมาชิก" aria-label="เลือกหรือพิมพ์ชื่อสมาชิกของ ${escapeAttr(team)}">
