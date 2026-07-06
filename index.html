@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>ปฏิทินทีมผู้รับเหมา 2026</title>
+<title>ปฏิทินทีมผู้รับเหมา</title>
 <style>
   :root{
     --bg-base:#0F1B2D;
@@ -85,32 +85,38 @@
   .month-nav button:hover:not(:disabled){background:var(--surface-hover);}
   .month-nav button:disabled{opacity:.25;cursor:default;}
   .month-nav .label{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
     font-weight:700;
     min-width:140px;
     text-align:center;
     font-size:15px;
   }
+  .year-select{
+    border:1px solid transparent;
+    background:rgba(15,27,45,.45);
+    color:var(--text-primary);
+    border-radius:8px;
+    padding:3px 8px;
+    font:inherit;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .year-select:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
 
-  /* Legend + team manager row */
+  /* Team manager row */
   .toolbar{
     display:flex;
     align-items:center;
-    justify-content:space-between;
+    justify-content:flex-end;
     flex-wrap:wrap;
     gap:10px;
     margin-bottom:16px;
-  }
-  .legend{
-    display:flex;
-    gap:14px;
-    flex-wrap:wrap;
-  }
-  .legend-item{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    font-size:12.5px;
-    color:var(--text-secondary);
   }
   .toolbar-actions{
     display:flex;
@@ -142,11 +148,6 @@
   .sync-status.connecting::before{background:var(--accent);}
   .sync-status.offline::before{background:var(--danger);}
   .hidden{display:none!important;}
-  .swatch{
-    width:10px;height:10px;
-    border-radius:2px;
-    flex:none;
-  }
   .btn{
     font-family:var(--font-body);
     border:1px solid var(--border);
@@ -543,7 +544,7 @@
   @media (max-width:560px){
     .day-cell{min-height:70px;padding:6px;}
     .tag{font-size:9.5px;}
-    .month-nav .label{min-width:100px;font-size:13px;}
+    .month-nav .label{min-width:118px;font-size:13px;}
     .header-title h1{font-size:18px;}
     .team-row{grid-template-columns:1fr;}
     .proj-options{grid-row:2;}
@@ -560,17 +561,19 @@
   <div class="header">
     <div class="header-title">
       <span class="eyebrow">Contractor site schedule</span>
-      <h1>ปฏิทินทีมผู้รับเหมา 2026</h1>
+      <h1 id="calendarTitle">ปฏิทินทีมผู้รับเหมา</h1>
     </div>
     <div class="month-nav">
       <button id="prevBtn" aria-label="เดือนก่อนหน้า">‹</button>
-      <div class="label" id="monthLabel"></div>
+      <div class="label">
+        <span id="monthLabel"></span>
+        <select class="year-select" id="yearSelect" aria-label="เลือกปี"></select>
+      </div>
       <button id="nextBtn" aria-label="เดือนถัดไป">›</button>
     </div>
   </div>
 
   <div class="toolbar">
-    <div class="legend" id="legend"></div>
     <div class="toolbar-actions">
       <span class="sync-status" id="syncStatus">Local only</span>
       <button class="btn hidden" id="syncNowBtn" type="button">อัปโหลดข้อมูลเครื่องนี้</button>
@@ -611,7 +614,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const YEAR = 2026;
+const DEFAULT_YEAR = 2026;
+const YEAR_OPTIONS = Array.from({length:12}, (_,idx)=>2024 + idx);
 const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
   "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const WEEKDAY_NAMES = ["อา","จ","อ","พ","พฤ","ศ","ส"];
@@ -640,7 +644,8 @@ let state = {
   dayMembers: {},
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
-let currentMonth = 6; // 0-indexed, default July since today's date is 2026-07-03
+let currentYear = DEFAULT_YEAR;
+let currentMonth = 6; // 0-indexed, default July
 let activeDayKey = null;
 let sync = {
   mode: "local",
@@ -871,16 +876,6 @@ function collectMemberOptions(team){
   return Array.from(names).sort((a,b)=>a.localeCompare(b, 'th'));
 }
 
-function renderLegend(){
-  const el = document.getElementById('legend');
-  el.innerHTML = PROJECTS.map(p=>`
-    <div class="legend-item">
-      <span class="swatch" style="background:var(--${p.cls})"></span>
-      <span>${p.label}</span>
-    </div>
-  `).join('');
-}
-
 function renderWeekdayRow(){
   const el = document.getElementById('weekdayRow');
   el.innerHTML = WEEKDAY_NAMES.map((d,i)=>
@@ -892,19 +887,32 @@ function daysInMonth(year, monthIdx){
   return new Date(year, monthIdx+1, 0).getDate();
 }
 
+function renderYearSelect(){
+  const select = document.getElementById('yearSelect');
+  if(!YEAR_OPTIONS.includes(currentYear)){
+    YEAR_OPTIONS.push(currentYear);
+    YEAR_OPTIONS.sort((a,b)=>a-b);
+  }
+  select.innerHTML = YEAR_OPTIONS.map(year=>
+    `<option value="${year}" ${year===currentYear ? 'selected' : ''}>${year}</option>`
+  ).join('');
+}
+
 function render(){
-  document.getElementById('monthLabel').textContent = `${MONTH_NAMES[currentMonth]} ${YEAR}`;
+  document.getElementById('calendarTitle').textContent = `ปฏิทินทีมผู้รับเหมา ${currentYear}`;
+  document.title = `ปฏิทินทีมผู้รับเหมา ${currentYear}`;
+  document.getElementById('monthLabel').textContent = MONTH_NAMES[currentMonth];
+  renderYearSelect();
   document.getElementById('prevBtn').disabled = currentMonth===0;
   document.getElementById('nextBtn').disabled = currentMonth===11;
 
-  renderLegend();
   renderWeekdayRow();
 
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
-  const firstDay = new Date(YEAR, currentMonth, 1).getDay(); // 0=Sun
-  const numDays = daysInMonth(YEAR, currentMonth);
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay(); // 0=Sun
+  const numDays = daysInMonth(currentYear, currentMonth);
 
   for(let i=0;i<firstDay;i++){
     const div = document.createElement('div');
@@ -913,7 +921,7 @@ function render(){
   }
 
   for(let d=1; d<=numDays; d++){
-    const dateObj = new Date(YEAR, currentMonth, d);
+    const dateObj = new Date(currentYear, currentMonth, d);
     const key = fmtKey(dateObj);
     const dow = dateObj.getDay();
     const isWeekend = dow===0 || dow===6;
@@ -954,7 +962,7 @@ function render(){
 
 function openDayModal(key, dateObj){
   activeDayKey = key;
-  const title = `วันที่ ${dateObj.getDate()} ${MONTH_NAMES[currentMonth]} ${YEAR}`;
+  const title = `วันที่ ${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
   document.getElementById('dayModalTitle').textContent = title;
 
   const listEl = document.getElementById('teamAssignList');
@@ -1210,6 +1218,10 @@ document.getElementById('prevBtn').addEventListener('click', ()=>{
 });
 document.getElementById('nextBtn').addEventListener('click', ()=>{
   if(currentMonth<11){ currentMonth++; render(); }
+});
+document.getElementById('yearSelect').addEventListener('change', (e)=>{
+  currentYear = Number(e.target.value) || DEFAULT_YEAR;
+  render();
 });
 document.getElementById('syncNowBtn').addEventListener('click', async ()=>{
   saveLocalSnapshot();
