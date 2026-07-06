@@ -381,6 +381,57 @@
     font-size:13px;
   }
   .team-edit-row input:focus{outline:none;border-color:var(--accent);}
+  .color-settings{
+    border:1px solid rgba(143,163,191,.22);
+    background:rgba(30,49,79,.42);
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .settings-title{
+    color:var(--text-secondary);
+    font-size:11px;
+    font-weight:700;
+    margin-bottom:8px;
+  }
+  .color-list{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+  }
+  .color-control{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    border:1px solid var(--border);
+    background:var(--surface-light);
+    border-radius:8px;
+    padding:7px 8px;
+  }
+  .color-control span{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:12px;
+    color:var(--text-primary);
+  }
+  .project-color-input{
+    width:32px;
+    height:32px;
+    flex:none;
+    padding:0;
+    border:0;
+    border-radius:50%;
+    background:transparent;
+    cursor:pointer;
+  }
+  .project-color-input::-webkit-color-swatch-wrapper{padding:0;}
+  .project-color-input::-webkit-color-swatch{
+    border:2px solid rgba(255,255,255,.55);
+    border-radius:50%;
+  }
   .member-list{
     display:flex;
     flex-wrap:wrap;
@@ -548,6 +599,7 @@
     .header-title h1{font-size:18px;}
     .team-row{grid-template-columns:1fr;}
     .proj-options{grid-row:2;}
+    .color-list{grid-template-columns:1fr;}
     .member-list-row{grid-template-columns:1fr;}
     .member-editor-title{width:100%;}
     .member-list{min-width:100%;flex-basis:100%;}
@@ -603,6 +655,10 @@
       <h2>จัดการทีมผู้รับเหมา</h2>
       <button class="close" id="closeTeamModal">✕</button>
     </div>
+    <div class="color-settings">
+      <div class="settings-title">สีปุ่มงาน</div>
+      <div class="color-list" id="projectColorList"></div>
+    </div>
     <div id="teamEditList"></div>
     <div class="add-team-row">
       <input type="text" id="newTeamInput" placeholder="ชื่อทีมใหม่ เช่น ทีม D">
@@ -620,10 +676,11 @@ const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","ม�
   "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const WEEKDAY_NAMES = ["อา","จ","อ","พ","พฤ","ศ","ส"];
 const PROJECTS = [
-  {key:'newsite', label:'New Site', cls:'newsite'},
-  {key:'retrofit', label:'Retrofit', cls:'retrofit'},
-  {key:'maintenance', label:'Maintenance', cls:'maintenance'}
+  {key:'newsite', label:'New Site', cls:'newsite', color:'#4C9AFF'},
+  {key:'retrofit', label:'Retrofit', cls:'retrofit', color:'#F2A65A'},
+  {key:'maintenance', label:'Maintenance', cls:'maintenance', color:'#52C77E'}
 ];
+const DEFAULT_PROJECT_COLORS = Object.fromEntries(PROJECTS.map(p=>[p.key, p.color]));
 const DEFAULT_TEAMS = ["ทีม A","ทีม B","ทีม C"];
 
 // ใส่ค่า Firebase config ตรงนี้เพื่อเปิด realtime sync ข้ามเครื่อง
@@ -642,6 +699,7 @@ const REALTIME_DATA_PATH = "calenda/team-schedule-2026";
 let state = {
   teams: [...DEFAULT_TEAMS],
   dayMembers: {},
+  projectColors: {...DEFAULT_PROJECT_COLORS},
   assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
 };
 let currentYear = DEFAULT_YEAR;
@@ -692,6 +750,10 @@ function loadLocalData(){
     if(savedDayMembers) state.dayMembers = normalizeDayMembers(JSON.parse(savedDayMembers));
   }catch(e){}
   try{
+    const savedProjectColors = localStorage.getItem('calenda-project-colors');
+    if(savedProjectColors) state.projectColors = normalizeProjectColors(JSON.parse(savedProjectColors));
+  }catch(e){}
+  try{
     const savedAssignments = localStorage.getItem('calenda-assignments');
     if(savedAssignments) state.assignments = JSON.parse(savedAssignments);
   }catch(e){}
@@ -702,6 +764,8 @@ function saveLocalSnapshot(){
   try{ localStorage.setItem('calenda-teams', JSON.stringify(state.teams)); }
   catch(e){}
   try{ localStorage.setItem('calenda-day-members', JSON.stringify(state.dayMembers)); }
+  catch(e){}
+  try{ localStorage.setItem('calenda-project-colors', JSON.stringify(state.projectColors)); }
   catch(e){}
   try{ localStorage.setItem('calenda-assignments', JSON.stringify(state.assignments)); }
   catch(e){}
@@ -714,6 +778,10 @@ async function saveTeams(){
 async function saveAssignments(){
   saveLocalSnapshot();
   await pushRemoteState('บันทึกข้อมูลไม่สำเร็จ');
+}
+async function saveProjectColors(){
+  saveLocalSnapshot();
+  await pushRemoteState('บันทึกสีไม่สำเร็จ');
 }
 
 function hasFirebaseConfig(){
@@ -754,6 +822,7 @@ async function initRealtimeSync(){
       if(remoteData){
         state.teams = Array.isArray(remoteData.teams) ? remoteData.teams : [...DEFAULT_TEAMS];
         state.dayMembers = normalizeDayMembers(remoteData.dayMembers || {});
+        state.projectColors = normalizeProjectColors(remoteData.projectColors || {});
         state.assignments = remoteData.assignments && typeof remoteData.assignments === "object"
           ? remoteData.assignments
           : {};
@@ -792,6 +861,7 @@ async function pushRemoteState(errorMessage){
     await sync.setRemote(sync.dataRef, {
       teams: state.teams,
       dayMembers: state.dayMembers,
+      projectColors: state.projectColors,
       assignments: state.assignments,
       updatedAt: new Date().toISOString()
     });
@@ -813,6 +883,7 @@ function refreshOpenModals(){
 
   const teamOverlay = document.getElementById('teamOverlay');
   if(teamOverlay.classList.contains('open')){
+    renderProjectColorList();
     renderTeamEditList();
   }
 }
@@ -820,12 +891,14 @@ function refreshOpenModals(){
 function normalizeState(){
   state.teams = Array.isArray(state.teams) ? state.teams : [...DEFAULT_TEAMS];
   state.dayMembers = normalizeDayMembers(state.dayMembers || {});
+  state.projectColors = normalizeProjectColors(state.projectColors || {});
   Object.keys(state.dayMembers).forEach(dateKey=>{
     Object.keys(state.dayMembers[dateKey]).forEach(team=>{
       if(!state.teams.includes(team)) delete state.dayMembers[dateKey][team];
     });
     if(Object.keys(state.dayMembers[dateKey]).length===0) delete state.dayMembers[dateKey];
   });
+  applyProjectColors();
 }
 
 function normalizeTeamMembers(value){
@@ -844,6 +917,21 @@ function normalizeDayMembers(value){
     dateKey,
     normalizeTeamMembers(membersByTeam)
   ]));
+}
+
+function normalizeProjectColors(value){
+  const colors = {...DEFAULT_PROJECT_COLORS};
+  PROJECTS.forEach(project=>{
+    const color = String(value?.[project.key] || "").trim();
+    if(/^#[0-9a-f]{6}$/i.test(color)) colors[project.key] = color;
+  });
+  return colors;
+}
+
+function applyProjectColors(){
+  PROJECTS.forEach(project=>{
+    document.documentElement.style.setProperty(`--${project.cls}`, state.projectColors[project.key]);
+  });
 }
 
 function parseMembersText(value){
@@ -1072,6 +1160,16 @@ document.getElementById('dayOverlay').addEventListener('click', (e)=>{
 });
 
 // Team management
+function renderProjectColorList(){
+  const el = document.getElementById('projectColorList');
+  el.innerHTML = PROJECTS.map(project=>`
+    <label class="color-control">
+      <input class="project-color-input" type="color" data-project="${project.key}" value="${escapeAttr(state.projectColors[project.key])}" aria-label="สี ${project.label}">
+      <span>${project.label}</span>
+    </label>
+  `).join('');
+}
+
 function renderTeamEditList(){
   const el = document.getElementById('teamEditList');
   if(state.teams.length===0){
@@ -1090,6 +1188,7 @@ function renderTeamEditList(){
 }
 
 document.getElementById('manageTeamsBtn').addEventListener('click', ()=>{
+  renderProjectColorList();
   renderTeamEditList();
   document.getElementById('teamOverlay').classList.add('open');
 });
@@ -1102,6 +1201,23 @@ document.getElementById('teamOverlay').addEventListener('click', (e)=>{
     document.getElementById('teamOverlay').classList.remove('open');
     render();
   }
+});
+
+document.getElementById('projectColorList').addEventListener('input', (e)=>{
+  if(!e.target.classList.contains('project-color-input')) return;
+  state.projectColors[e.target.dataset.project] = e.target.value;
+  applyProjectColors();
+});
+
+document.getElementById('projectColorList').addEventListener('change', async (e)=>{
+  if(!e.target.classList.contains('project-color-input')) return;
+  state.projectColors = normalizeProjectColors(state.projectColors);
+  applyProjectColors();
+  saveLocalSnapshot();
+  render();
+  refreshOpenModals();
+  await saveProjectColors();
+  showToast('อัปเดตสีแล้ว');
 });
 
 document.getElementById('teamEditList').addEventListener('change', async (e)=>{
