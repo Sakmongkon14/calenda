@@ -294,10 +294,10 @@
     font-size:20px;cursor:pointer;line-height:1;padding:4px;
   }
   .team-row{
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:8px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:start;
+    gap:8px 12px;
     padding:10px 0;
     border-bottom:1px solid var(--border);
   }
@@ -311,11 +311,10 @@
     text-overflow:ellipsis;
     white-space:nowrap;
   }
-  .team-meta{
-    flex:1;
+  .team-meta,
+  .team-summary{
     min-width:0;
   }
-  .team-meta .member-editor{margin-top:10px;}
   .team-members{
     margin-top:3px;
     color:var(--text-secondary);
@@ -400,6 +399,13 @@
     border-radius:10px;
     padding:8px;
   }
+  .team-row > .member-editor{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:max-content minmax(72px,1fr) minmax(205px,260px);
+    gap:8px;
+    width:100%;
+  }
   .member-editor-title{
     color:var(--text-secondary);
     font-size:11px;
@@ -448,6 +454,9 @@
     align-items:center;
     flex:1 1 230px;
     max-width:320px;
+  }
+  .team-row > .member-editor .member-add-row{
+    max-width:none;
   }
   .member-add-row input{
     min-width:0;
@@ -531,6 +540,9 @@
     .tag{font-size:9.5px;}
     .month-nav .label{min-width:100px;font-size:13px;}
     .header-title h1{font-size:18px;}
+    .team-row{grid-template-columns:1fr;}
+    .proj-options{grid-row:2;}
+    .team-row > .member-editor{grid-template-columns:1fr;}
     .member-editor{align-items:stretch;}
     .member-editor-title{width:100%;}
     .member-list{min-width:100%;flex-basis:100%;}
@@ -940,12 +952,12 @@ function openDayModal(key, dateObj){
       ).join('');
       const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="ไม่ระบุ">–</button>`;
       return `<div class="team-row">
-        <div class="team-meta">
+        <div class="team-summary">
           <div class="team-name">${escapeHtml(team)}</div>
           <div class="team-members" title="${escapeAttr(formatMembers(team))}">${escapeHtml(formatMembers(team))}</div>
-          ${renderMemberControls(team)}
         </div>
         <div class="proj-options">${btns}${clearBtn}</div>
+        ${renderMemberControls(team)}
       </div>`;
     }).join('');
   }
@@ -961,14 +973,14 @@ function escapeAttr(s){ return escapeHtml(s); }
 function renderMemberControls(team){
   return `
     <div class="member-editor">
-      <div class="member-editor-title">สมาชิกของทีมนี้ในวันนี้</div>
+      <div class="member-editor-title">สมาชิกวันนี้</div>
       <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
         ${getDayMembers(team).map(member=>`
           <div class="member-chip" title="${escapeAttr(member)}">
             <span>${escapeHtml(member)}</span>
             <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
           </div>
-        `).join('') || `<div class="field-hint">ยังไม่มีสมาชิกของทีมนี้ในวันนี้</div>`}
+        `).join('') || `<div class="field-hint">ยังไม่มี</div>`}
       </div>
       <div class="member-add-row">
         <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" placeholder="ชื่อสมาชิกใหม่" aria-label="ชื่อสมาชิกใหม่ของ ${escapeAttr(team)}">
