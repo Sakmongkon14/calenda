@@ -1,11 +1,11 @@
 ﻿<!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ปฏิทินทีมผู้รับเหมา</title>
+<title>Contractor Team Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kanit:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-base:#F8FBFF;
@@ -22,8 +22,8 @@
     --maintenance:#52C77E;
     --danger:#FF5B73;
     --radius:16px;
-    --font-body:'Noto Sans Thai',Tahoma,sans-serif;
-    --font-display:'Kanit','Noto Sans Thai',Tahoma,sans-serif;
+    --font-body:'Inter','Kanit',Tahoma,sans-serif;
+    --font-display:'Inter','Kanit',Tahoma,sans-serif;
   }
   *{box-sizing:border-box;}
   body{
@@ -729,23 +729,23 @@
   <div class="header">
     <div class="header-title">
       <span class="eyebrow">Contractor site schedule</span>
-      <h1 id="calendarTitle">ปฏิทินทีมผู้รับเหมา</h1>
+      <h1 id="calendarTitle">Contractor Team Calendar</h1>
     </div>
     <div class="month-nav">
-      <button id="prevBtn" aria-label="เดือนก่อนหน้า">‹</button>
+      <button id="prevBtn" aria-label="Previous month">‹</button>
       <div class="label">
         <span id="monthLabel"></span>
-        <select class="year-select" id="yearSelect" aria-label="เลือกปี"></select>
+        <select class="year-select" id="yearSelect" aria-label="Select year"></select>
       </div>
-      <button id="nextBtn" aria-label="เดือนถัดไป">›</button>
+      <button id="nextBtn" aria-label="Next month">›</button>
     </div>
   </div>
 
   <div class="toolbar">
     <div class="toolbar-actions">
       <span class="sync-status" id="syncStatus">Local only</span>
-      <button class="btn hidden" id="syncNowBtn" type="button">อัปโหลดข้อมูลเครื่องนี้</button>
-      <button class="btn" id="manageTeamsBtn">⚙ จัดการทีม</button>
+      <button class="btn hidden" id="syncNowBtn" type="button">Upload local data</button>
+      <button class="btn" id="manageTeamsBtn">⚙ Manage Teams</button>
     </div>
   </div>
 
@@ -757,7 +757,7 @@
 <div class="overlay" id="dayOverlay">
   <div class="modal">
     <div class="modal-header">
-      <h2 id="dayModalTitle">วันที่</h2>
+      <h2 id="dayModalTitle">Date</h2>
       <button class="close" id="closeDayModal">✕</button>
     </div>
     <div id="teamAssignList"></div>
@@ -768,22 +768,22 @@
 <div class="overlay" id="teamOverlay">
   <div class="modal">
     <div class="modal-header">
-      <h2>จัดการทีมผู้รับเหมา</h2>
+      <h2>Manage Contractor Teams</h2>
       <button class="close" id="closeTeamModal">✕</button>
     </div>
     <div class="color-settings">
-      <div class="settings-title">รายการสีงาน</div>
+      <div class="settings-title">Work Color Options</div>
       <div class="color-list" id="projectColorList"></div>
       <div class="add-project-row">
-        <input type="text" id="newProjectLabel" placeholder="ชื่อสีใหม่ เช่น งานด่วน">
-        <input type="color" id="newProjectColor" value="#7C6BFF" aria-label="สีใหม่">
-        <button class="btn" id="addProjectBtn" type="button">+ สี</button>
+        <input type="text" id="newProjectLabel" placeholder="New color label, e.g. Urgent Work">
+        <input type="color" id="newProjectColor" value="#7C6BFF" aria-label="New color">
+        <button class="btn" id="addProjectBtn" type="button">+ Color</button>
       </div>
     </div>
     <div id="teamEditList"></div>
     <div class="add-team-row">
-      <input type="text" id="newTeamInput" placeholder="ชื่อทีมใหม่ เช่น ทีม D">
-      <button class="btn btn-accent" id="addTeamBtn">+ เพิ่ม</button>
+      <input type="text" id="newTeamInput" placeholder="New team name, e.g. Team D">
+      <button class="btn btn-accent" id="addTeamBtn">+ Add</button>
     </div>
   </div>
 </div>
@@ -793,18 +793,23 @@
 <script>
 const DEFAULT_YEAR = 2026;
 const YEAR_OPTIONS = Array.from({length:12}, (_,idx)=>2024 + idx);
-const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
-  "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
-const WEEKDAY_NAMES = ["อา","จ","อ","พ","พฤ","ศ","ส"];
+const MONTH_NAMES = ["January","February","March","April","May","June",
+  "July","August","September","October","November","December"];
+const WEEKDAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DEFAULT_PROJECT_OPTIONS = [
   {key:'newsite', label:'New Site', color:'#4C9AFF'},
   {key:'retrofit', label:'Retrofit', color:'#F2A65A'},
   {key:'maintenance', label:'Maintenance', color:'#52C77E'}
 ];
-const DEFAULT_TEAMS = ["ทีม A","ทีม B","ทีม C"];
+const DEFAULT_TEAMS = ["Team A","Team B","Team C"];
+const LEGACY_TEAM_NAME_MAP = {
+  "\u0e17\u0e35\u0e21 A":"Team A",
+  "\u0e17\u0e35\u0e21 B":"Team B",
+  "\u0e17\u0e35\u0e21 C":"Team C"
+};
 
-// ใส่ค่า Firebase config ตรงนี้เพื่อเปิด realtime sync ข้ามเครื่อง
-// ไปที่ Firebase Console > Project settings > Your apps > Web app
+// Add Firebase config here to enable realtime sync across devices.
+// Go to Firebase Console > Project settings > Your apps > Web app.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCfDQvsCjG-tvrSmEHOc-oHqPXUubRN4fE",
   authDomain: "calenda-aa594.firebaseapp.com",
@@ -820,7 +825,7 @@ let state = {
   teams: [...DEFAULT_TEAMS],
   dayMembers: {},
   projectOptions: DEFAULT_PROJECT_OPTIONS.map(project=>({...project})),
-  assignments: {} // { "2026-07-03": { "ทีม A": "newsite" } }
+  assignments: {} // { "2026-07-03": { "Team A": "newsite" } }
 };
 let currentYear = DEFAULT_YEAR;
 let currentMonth = 6; // 0-indexed, default July
@@ -898,15 +903,15 @@ function saveLocalSnapshot(){
 
 async function saveTeams(){
   saveLocalSnapshot();
-  await pushRemoteState('บันทึกทีมไม่สำเร็จ');
+  await pushRemoteState('Could not save teams');
 }
 async function saveAssignments(){
   saveLocalSnapshot();
-  await pushRemoteState('บันทึกข้อมูลไม่สำเร็จ');
+  await pushRemoteState('Could not save data');
 }
 async function saveProjectOptions(){
   saveLocalSnapshot();
-  await pushRemoteState('บันทึกรายการสีไม่สำเร็จ');
+  await pushRemoteState('Could not save color options');
 }
 
 function hasFirebaseConfig(){
@@ -962,20 +967,20 @@ async function initRealtimeSync(){
 
       setSyncStatus("online", "Realtime ready");
       setSyncUploadVisible(true);
-      showToast('ฐานข้อมูลกลางยังว่าง เลือกอัปโหลดจากเครื่องที่มีข้อมูลล่าสุด');
+      showToast('Shared database is empty. Upload from the device with the latest data.');
     }, (error)=>{
       console.error(error);
       sync.mode = "local";
       setSyncStatus("offline", "Local fallback");
       setSyncUploadVisible(false);
-      showToast('เชื่อม realtime ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
+      showToast('Realtime connection failed. Using local data instead.');
     });
   }catch(error){
     console.error(error);
     sync.mode = "local";
     setSyncStatus("offline", "Local fallback");
     setSyncUploadVisible(false);
-    showToast('โหลด Firebase ไม่สำเร็จ ใช้ข้อมูลในเครื่องแทน');
+    showToast('Could not load Firebase. Using local data instead.');
   }
 }
 
@@ -1015,6 +1020,7 @@ function refreshOpenModals(){
 
 function normalizeState(){
   state.teams = Array.isArray(state.teams) ? state.teams : [...DEFAULT_TEAMS];
+  migrateLegacyTeamNames();
   state.dayMembers = normalizeDayMembers(state.dayMembers || {});
   state.projectOptions = normalizeProjectOptions(state.projectOptions, state.projectColors);
   state.assignments = state.assignments && typeof state.assignments === "object" ? state.assignments : {};
@@ -1031,6 +1037,30 @@ function normalizeState(){
     });
     if(Object.keys(state.assignments[dateKey]).length===0) delete state.assignments[dateKey];
   });
+}
+
+function migrateLegacyTeamNames(){
+  const rename = name => LEGACY_TEAM_NAME_MAP[name] || name;
+  state.teams = Array.from(new Set(state.teams.map(team=>rename(String(team).trim())).filter(Boolean)));
+  state.assignments = renameNestedTeamKeys(state.assignments);
+  state.dayMembers = renameNestedTeamKeys(state.dayMembers);
+}
+
+function renameNestedTeamKeys(value){
+  if(!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([dateKey, teamsByDate])=>{
+    if(!teamsByDate || typeof teamsByDate !== "object") return [dateKey, teamsByDate];
+    const renamed = {};
+    Object.entries(teamsByDate).forEach(([team, teamValue])=>{
+      const nextTeam = LEGACY_TEAM_NAME_MAP[team] || team;
+      if(Array.isArray(teamValue)){
+        renamed[nextTeam] = Array.from(new Set([...(renamed[nextTeam] || []), ...teamValue]));
+      } else {
+        renamed[nextTeam] = teamValue;
+      }
+    });
+    return [dateKey, renamed];
+  }));
 }
 
 function normalizeTeamMembers(value){
@@ -1061,7 +1091,7 @@ function normalizeProjectOptions(value, legacyColors){
     key = key.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() || `project-${idx + 1}`;
     while(usedKeys.has(key)) key = `${key}-${idx + 1}`;
     usedKeys.add(key);
-    const label = String(project?.label || fallback.label || `สี ${idx + 1}`).trim();
+    const label = String(project?.label || fallback.label || `Color ${idx + 1}`).trim();
     const color = String((hasOptions ? project?.color : legacyColors?.[key]) || project?.color || fallback.color || '#4C9AFF').trim();
     return {
       key,
@@ -1107,7 +1137,7 @@ function parseMembersText(value){
 
 function formatMembers(team){
   const members = getDayMembers(team);
-  return members.length ? members.join(", ") : "ยังไม่ได้ระบุสมาชิกในวันนี้";
+  return members.length ? members.join(", ") : "No members assigned today";
 }
 
 function getDayMembers(team){
@@ -1125,7 +1155,7 @@ function collectMemberOptions(team){
       });
     });
   });
-  return Array.from(names).sort((a,b)=>a.localeCompare(b, 'th'));
+  return Array.from(names).sort((a,b)=>a.localeCompare(b, 'en'));
 }
 
 function renderWeekdayRow(){
@@ -1151,8 +1181,8 @@ function renderYearSelect(){
 }
 
 function render(){
-  document.getElementById('calendarTitle').textContent = `ปฏิทินทีมผู้รับเหมา ${currentYear}`;
-  document.title = `ปฏิทินทีมผู้รับเหมา ${currentYear}`;
+  document.getElementById('calendarTitle').textContent = `Contractor Team Calendar ${currentYear}`;
+  document.title = `Contractor Team Calendar ${currentYear}`;
   document.getElementById('monthLabel').textContent = MONTH_NAMES[currentMonth];
   renderYearSelect();
   document.getElementById('prevBtn').disabled = currentMonth===0;
@@ -1203,7 +1233,7 @@ function render(){
     if(entries.length > maxShow){
       const more = document.createElement('div');
       more.className = 'more-hint';
-      more.textContent = `+${entries.length - maxShow} เพิ่มเติม`;
+      more.textContent = `+${entries.length - maxShow} more`;
       tagsEl.appendChild(more);
     }
     cell.appendChild(tagsEl);
@@ -1215,12 +1245,12 @@ function render(){
 
 function openDayModal(key, dateObj){
   activeDayKey = key;
-  const title = `วันที่ ${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+  const title = `${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getDate()}, ${dateObj.getFullYear()}`;
   document.getElementById('dayModalTitle').textContent = title;
 
   const listEl = document.getElementById('teamAssignList');
   if(state.teams.length===0){
-    listEl.innerHTML = `<div class="empty-teams">ยังไม่มีทีม กด "จัดการทีม" เพื่อเพิ่มทีมผู้รับเหมา</div>`;
+    listEl.innerHTML = `<div class="empty-teams">No teams yet. Open "Manage Teams" to add contractors.</div>`;
   } else {
     const dayAsg = state.assignments[key] || {};
     listEl.innerHTML = state.teams.map((team, idx)=>{
@@ -1228,7 +1258,7 @@ function openDayModal(key, dateObj){
       const btns = getProjectOptions().map(p=>
         `<button class="proj-btn ${current===p.key?'active':''}" style="background:${escapeAttr(p.color)}" data-team="${escapeAttr(team)}" data-proj="${escapeAttr(p.key)}" title="${escapeAttr(p.label)}"></button>`
       ).join('');
-      const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="ไม่ระบุ">–</button>`;
+      const clearBtn = `<button class="proj-btn p-clear ${current===''?'active':''}" data-team="${escapeAttr(team)}" data-proj="" title="Unassigned">–</button>`;
       return `<div class="team-row">
         <div class="team-summary">
           <div class="team-name">${escapeHtml(team)}</div>
@@ -1256,20 +1286,20 @@ function renderMemberControls(team, idx){
   return `
     <div class="member-editor">
       <div class="member-list-row">
-        <div class="member-editor-title">สมาชิกวันนี้</div>
-        <div class="member-list" aria-label="สมาชิกของ ${escapeAttr(team)}">
+        <div class="member-editor-title">Members Today</div>
+        <div class="member-list" aria-label="Members for ${escapeAttr(team)}">
           ${getDayMembers(team).map(member=>`
             <div class="member-chip" title="${escapeAttr(member)}">
               <span>${escapeHtml(member)}</span>
-              <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="ลบ ${escapeAttr(member)}">×</button>
+              <button class="member-remove-btn" type="button" data-team="${escapeAttr(team)}" data-member="${escapeAttr(member)}" aria-label="Remove ${escapeAttr(member)}">×</button>
             </div>
-          `).join('') || `<div class="field-hint">ยังไม่มี</div>`}
+          `).join('') || `<div class="field-hint">None yet</div>`}
         </div>
       </div>
       <div class="member-add-row">
-        <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" list="${optionsId}" autocomplete="off" placeholder="เลือก/พิมพ์ชื่อสมาชิก" aria-label="เลือกหรือพิมพ์ชื่อสมาชิกของ ${escapeAttr(team)}">
+        <input type="text" class="member-name-input" data-team="${escapeAttr(team)}" list="${optionsId}" autocomplete="off" placeholder="Select or type a member" aria-label="Select or type a member for ${escapeAttr(team)}">
         <datalist id="${optionsId}">${optionItems}</datalist>
-        <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ สมาชิก</button>
+        <button class="btn member-add-btn" type="button" data-team="${escapeAttr(team)}">+ Member</button>
       </div>
     </div>
   `;
@@ -1329,9 +1359,9 @@ function renderProjectColorList(){
   const el = document.getElementById('projectColorList');
   el.innerHTML = getProjectOptions().map(project=>`
     <div class="color-control">
-      <input class="project-color-input" type="color" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.color)}" aria-label="สี ${escapeAttr(project.label)}">
-      <input class="project-label-input" type="text" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.label)}" aria-label="ชื่อรายการสี">
-      <button class="project-remove-btn" type="button" data-project="${escapeAttr(project.key)}" title="ลบรายการสี">×</button>
+      <input class="project-color-input" type="color" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.color)}" aria-label="Color for ${escapeAttr(project.label)}">
+      <input class="project-label-input" type="text" data-project="${escapeAttr(project.key)}" value="${escapeAttr(project.label)}" aria-label="Color option name">
+      <button class="project-remove-btn" type="button" data-project="${escapeAttr(project.key)}" title="Remove color option">×</button>
     </div>
   `).join('');
 }
@@ -1339,16 +1369,16 @@ function renderProjectColorList(){
 function renderTeamEditList(){
   const el = document.getElementById('teamEditList');
   if(state.teams.length===0){
-    el.innerHTML = `<div class="empty-teams">ยังไม่มีทีม เพิ่มทีมแรกด้านล่าง</div>`;
+    el.innerHTML = `<div class="empty-teams">No teams yet. Add the first team below.</div>`;
     return;
   }
   el.innerHTML = state.teams.map((team, idx)=>`
     <div class="team-edit-row">
       <div class="team-edit-fields">
-        <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="ชื่อทีม">
-        <div class="field-hint">เพิ่มสมาชิกจากหน้าวันที่ในปฏิทิน</div>
+        <input type="text" value="${escapeAttr(team)}" data-idx="${idx}" class="team-name-input" aria-label="Team name">
+        <div class="field-hint">Add members from a calendar date.</div>
       </div>
-      <button class="icon-btn" data-idx="${idx}" title="ลบทีม">🗑</button>
+      <button class="icon-btn" data-idx="${idx}" title="Delete team">🗑</button>
     </div>
   `).join('');
 }
@@ -1393,14 +1423,14 @@ document.getElementById('projectColorList').addEventListener('change', async (e)
   render();
   refreshOpenModals();
   await saveProjectOptions();
-  showToast('อัปเดตรายการสีแล้ว');
+  showToast('Color options updated');
 });
 
 document.getElementById('projectColorList').addEventListener('click', async (e)=>{
   const btn = e.target.closest('.project-remove-btn');
   if(!btn) return;
   if(getProjectOptions().length <= 1){
-    showToast('ต้องมีอย่างน้อย 1 สี');
+    showToast('At least one color option is required');
     return;
   }
   const removedKey = btn.dataset.project;
@@ -1415,13 +1445,13 @@ document.getElementById('projectColorList').addEventListener('click', async (e)=
   render();
   refreshOpenModals();
   await saveProjectOptions();
-  showToast('ลบรายการสีแล้ว');
+  showToast('Color option removed');
 });
 
 document.getElementById('addProjectBtn').addEventListener('click', async ()=>{
   const labelInput = document.getElementById('newProjectLabel');
   const colorInput = document.getElementById('newProjectColor');
-  const label = labelInput.value.trim() || `สี ${getProjectOptions().length + 1}`;
+  const label = labelInput.value.trim() || `Color ${getProjectOptions().length + 1}`;
   state.projectOptions.push({
     key:makeProjectKey(label),
     label,
@@ -1433,7 +1463,7 @@ document.getElementById('addProjectBtn').addEventListener('click', async ()=>{
   render();
   refreshOpenModals();
   await saveProjectOptions();
-  showToast('เพิ่มรายการสีแล้ว');
+  showToast('Color option added');
 });
 
 document.getElementById('newProjectLabel').addEventListener('keydown', (e)=>{
@@ -1451,7 +1481,7 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
     if(oldName === newName) return;
     if(state.teams.some((team, teamIdx)=>teamIdx !== idx && team === newName)){
       e.target.value = oldName;
-      showToast('มีชื่อทีมนี้อยู่แล้ว');
+      showToast('A team with this name already exists');
       return;
     }
     state.teams[idx] = newName;
@@ -1472,7 +1502,7 @@ document.getElementById('teamEditList').addEventListener('change', async (e)=>{
     await saveTeams();
     await saveAssignments();
     renderTeamEditList();
-    showToast('อัปเดตชื่อทีมแล้ว');
+    showToast('Team name updated');
   }
 });
 
@@ -1493,7 +1523,7 @@ document.getElementById('teamEditList').addEventListener('click', async (e)=>{
   await saveTeams();
   await saveAssignments();
   renderTeamEditList();
-  showToast(`ลบ ${removed} แล้ว`);
+  showToast(`Removed ${removed}`);
 });
 
 async function addMember(team, input){
@@ -1503,14 +1533,14 @@ async function addMember(team, input){
   if(!state.dayMembers[activeDayKey]) state.dayMembers[activeDayKey] = {};
   if(!state.dayMembers[activeDayKey][team]) state.dayMembers[activeDayKey][team] = [];
   if(state.dayMembers[activeDayKey][team].includes(member)){
-    showToast('มีชื่อสมาชิกนี้อยู่แล้ว');
+    showToast('This member is already added');
     return;
   }
   state.dayMembers[activeDayKey][team].push(member);
   input.value = '';
   await saveTeams();
   refreshMemberViews();
-  showToast(`เพิ่ม ${member} แล้ว`);
+  showToast(`Added ${member}`);
 }
 
 async function removeMember(team, member){
@@ -1520,7 +1550,7 @@ async function removeMember(team, member){
   if(Object.keys(state.dayMembers[activeDayKey]).length===0) delete state.dayMembers[activeDayKey];
   await saveTeams();
   refreshMemberViews();
-  showToast(`ลบ ${member} แล้ว`);
+  showToast(`Removed ${member}`);
 }
 
 function refreshMemberViews(){
@@ -1543,12 +1573,12 @@ async function addTeam(){
   const input = document.getElementById('newTeamInput');
   const name = input.value.trim();
   if(!name) return;
-  if(state.teams.includes(name)){ showToast('มีชื่อทีมนี้อยู่แล้ว'); return; }
+  if(state.teams.includes(name)){ showToast('A team with this name already exists'); return; }
   state.teams.push(name);
   input.value = '';
   await saveTeams();
   renderTeamEditList();
-  showToast(`เพิ่ม ${name} แล้ว`);
+  showToast(`Added ${name}`);
 }
 
 document.getElementById('prevBtn').addEventListener('click', ()=>{
@@ -1563,8 +1593,8 @@ document.getElementById('yearSelect').addEventListener('change', (e)=>{
 });
 document.getElementById('syncNowBtn').addEventListener('click', async ()=>{
   saveLocalSnapshot();
-  await pushRemoteState('อัปโหลดข้อมูลไม่สำเร็จ');
-  if(sync.mode === "realtime") showToast('อัปโหลดข้อมูลเครื่องนี้แล้ว');
+  await pushRemoteState('Could not upload data');
+  if(sync.mode === "realtime") showToast('Local data uploaded');
 });
 
 loadData();
