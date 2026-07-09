@@ -263,11 +263,6 @@
     cursor:default;
     opacity:.35;
   }
-  .day-cell.today{
-    border-color:#7C6BFF;
-    background:#F5F2FF;
-    box-shadow:0 0 0 2px rgba(124,107,255,.16), 0 14px 34px rgba(124,107,255,.12);
-  }
   .day-num{
     font-family:var(--font-display);
     font-size:15px;
@@ -836,8 +831,6 @@ let sync = {
   setRemote: null
 };
 
-const todayKey = fmtKey(new Date(2026,6,3));
-
 function fmtKey(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -1208,7 +1201,7 @@ function render(){
     const dow = dateObj.getDay();
     const isWeekend = dow===0 || dow===6;
     const cell = document.createElement('div');
-    cell.className = 'day-cell' + (isWeekend?' weekend':'') + (key===todayKey?' today':'');
+    cell.className = 'day-cell' + (isWeekend?' weekend':'');
     cell.dataset.key = key;
 
     const numEl = document.createElement('div');
